@@ -1,0 +1,23 @@
+{
+    "title": "Final Project Writeup",
+    "sections": [
+        {
+            "question": "What have you done so far?",
+            "answer": [
+                "We began by selecting the Gait Maturation Database from PhysioNet since this aligns with our narrative goals and provides a strong foundation for interactive storytelling.",
+                "Building on this, we developed a clear and cohesive narrative to guide both our visualizations and overall user experience.",
+                "To inform our design decisions, we created several exploratory visualizations, which helped us better understand the dataset and finalize the concept for our main visualization.",
+                "With the direction established, we set up our project website and have started shaping its structure, integrating initial visual components and explanatory content."
+            ]
+        },
+        {
+            "question": "What will be the most challenging part of your project to design and why?",
+            "answer": [
+                "One of the core interactive elements we’re designing is an animated child character walking along the side of the page.",
+                "The walking speed of this character will dynamically respond to the data being shown, creating a narrative-driven form of interaction.",
+                "This integration of animation and data poses a significant design challenge, as it requires seamless coordination between real-time data updates and smooth animation behavior.",
+                "Striking a balance between engaging motion and clarity of information will demand both technical precision and creative decision-making."
+            ]
+        }
+    ]
+}

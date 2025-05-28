@@ -1305,8 +1305,255 @@ class ScrollytellingEngine {
     }
 }
 
+// Gait Visualization Class
+class GaitVisualization {
+    constructor() {
+        this.chart = null;
+        this.data = null;
+        this.selectedAge = null;
+        this.init();
+    }
+
+    async init() {
+        await this.loadData();
+        this.bindEvents();
+        this.selectedAge = parseInt(document.getElementById("gaitAgeSlider").value);
+        this.updateChart();
+        this.updateStatsFromAge(this.selectedAge);
+    }
+
+    async loadData() {
+        try {
+            const response = await fetch("table.csv");
+            const text = await response.text();
+            const rows = text.trim().split("\n").slice(1);
+
+            this.data = rows.map(row => {
+                const [id, age, gender, height, weight, legLength, speed, group] = row.split(",");
+                return {
+                    id: +id,
+                    age: +age,
+                    gender,
+                    height: +height,
+                    weight: +weight,
+                    legLength: +legLength,
+                    speed: +speed,
+                    group
+                };
+            });
+        } catch (error) {
+            console.error("Error loading gait data:", error);
+            this.data = [];
+        }
+    }
+
+    getFilteredData() {
+        if (!this.data) return [];
+        
+        const genderFilter = document.getElementById("gaitGender").value;
+        const groupFilter = document.getElementById("gaitGroup").value;
+        const minSpeed = parseFloat(document.getElementById("gaitSpeedSlider").value);
+        const minLeg = parseFloat(document.getElementById("gaitLegSlider").value);
+
+        return this.data.filter(d =>
+            (genderFilter === "All" || d.gender === genderFilter) &&
+            (groupFilter === "All" || d.group === groupFilter) &&
+            d.speed >= minSpeed &&
+            d.legLength >= minLeg
+        );
+    }
+
+    updateChart() {
+        const filtered = this.getFilteredData();
+
+        const ageMap = {};
+        filtered.forEach(d => {
+            if (!ageMap[d.age]) ageMap[d.age] = [];
+            ageMap[d.age].push(d);
+        });
+
+        const labels = Object.keys(ageMap).map(a => +a).sort((a, b) => a - b);
+        const speeds = labels.map(a => {
+            const entries = ageMap[a];
+            return entries.reduce((sum, e) => sum + e.speed, 0) / entries.length;
+        });
+
+        if (this.chart) this.chart.destroy();
+
+        const chartCanvas = document.getElementById("gaitSpeedChart");
+        if (!chartCanvas) return;
+
+        this.chart = new Chart(chartCanvas, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Avg Speed (m/s)",
+                    data: speeds,
+                    borderColor: "#FF6B6B",
+                    backgroundColor: "rgba(255, 107, 107, 0.1)",
+                    fill: false,
+                    tension: 0.2,
+                    pointBackgroundColor: labels.map(age => age === this.selectedAge ? "#4ECDC4" : "#FF6B6B"),
+                    pointRadius: labels.map(age => age === this.selectedAge ? 6 : 3),
+                    pointHoverRadius: labels.map(age => age === this.selectedAge ? 7 : 4)
+                }]
+            },
+            options: {
+                onClick: (e, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        this.selectedAge = labels[index];
+                        document.getElementById("gaitAgeSlider").value = this.selectedAge;
+                        this.updateStatsFromAge(this.selectedAge);
+                        this.updateChart(); // refresh to highlight selected dot
+                    }
+                },
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Age (months)",
+                            color: "#333",
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: "rgba(0,0,0,0.1)"
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Speed (m/s)",
+                            color: "#333",
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: "rgba(0,0,0,0.1)"
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: {
+                            color: "#333",
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    updateStatsFromAge(ageValue) {
+        const filtered = this.getFilteredData();
+        let stats = filtered.filter(d => d.age === ageValue);
+
+        const ageStat = document.getElementById("gaitAgeStat");
+        const speedStat = document.getElementById("gaitSpeedStat");
+        const legStat = document.getElementById("gaitLegLengthStat");
+
+        if (!ageStat || !speedStat || !legStat) return;
+
+        // If no data at this age, try closest
+        if (stats.length === 0) {
+            const availableAges = [...new Set(filtered.map(d => d.age))].sort((a, b) => Math.abs(a - ageValue) - Math.abs(b - ageValue));
+            if (availableAges.length === 0) {
+                ageStat.textContent = `${ageValue} months`;
+                speedStat.textContent = "—";
+                legStat.textContent = "—";
+                return;
+            }
+            const closestAge = availableAges[0];
+            document.getElementById("gaitAgeSlider").value = closestAge;
+            stats = filtered.filter(d => d.age === closestAge);
+            ageValue = closestAge;
+        }
+
+        this.selectedAge = ageValue;
+
+        const avgSpeed = stats.reduce((sum, d) => sum + d.speed, 0) / stats.length;
+        const avgLeg = stats.reduce((sum, d) => sum + d.legLength, 0) / stats.length;
+
+        ageStat.textContent = ageValue + " months";
+        speedStat.textContent = avgSpeed.toFixed(2) + " m/s";
+        legStat.textContent = avgLeg.toFixed(1) + " in";
+
+        const walker = document.getElementById("gaitWalker");
+        if (walker) {
+            walker.style.animationDuration = (10 / (avgSpeed * 10)).toFixed(2) + "s";
+        }
+    }
+
+    bindEvents() {
+        // Gender filter
+        const genderSelect = document.getElementById("gaitGender");
+        if (genderSelect) {
+            genderSelect.addEventListener("change", () => {
+                this.updateChart();
+                this.updateStatsFromAge(this.selectedAge);
+            });
+        }
+
+        // Group filter
+        const groupSelect = document.getElementById("gaitGroup");
+        if (groupSelect) {
+            groupSelect.addEventListener("change", () => {
+                this.updateChart();
+                this.updateStatsFromAge(this.selectedAge);
+            });
+        }
+
+        // Speed slider
+        const speedSlider = document.getElementById("gaitSpeedSlider");
+        if (speedSlider) {
+            speedSlider.addEventListener("input", () => {
+                this.updateChart();
+                this.updateStatsFromAge(this.selectedAge);
+            });
+        }
+
+        // Leg length slider
+        const legSlider = document.getElementById("gaitLegSlider");
+        if (legSlider) {
+            legSlider.addEventListener("input", () => {
+                this.updateChart();
+                this.updateStatsFromAge(this.selectedAge);
+            });
+        }
+
+        // Age slider
+        const ageSlider = document.getElementById("gaitAgeSlider");
+        if (ageSlider) {
+            ageSlider.addEventListener("input", function () {
+                this.selectedAge = parseInt(this.value);
+                this.updateStatsFromAge(this.selectedAge);
+                this.updateChart();
+            }.bind(this));
+        }
+    }
+}
+
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the scrollytelling engine
     new ScrollytellingEngine();
+    
+    // Initialize gait visualization when section 6 elements are available
+    setTimeout(() => {
+        if (document.getElementById('gaitSpeedChart')) {
+            new GaitVisualization();
+        }
+    }, 100);
 }); 

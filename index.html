@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The 8-Bit Kid's Adventure</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -152,10 +153,101 @@
             </div>
         </section>
 
+        <section class="story-section" id="section6">
+            <div class="content">
+                <h2>Chapter 6: Gait Maturation Summary</h2>
+                
+                <div class="gait-visualization">
+                    <div class="gait-filters">
+                        <div>
+                            <label for="gaitGender">Gender:</label>
+                            <select id="gaitGender">
+                                <option value="All">All</option>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="gaitGroup">Group:</label>
+                            <select id="gaitGroup">
+                                <option value="All">All</option>
+                                <option value="Young">Young</option>
+                                <option value="Middle">Middle</option>
+                                <option value="Old">Old</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="gait-visual-container">
+                        <div class="gait-controls-left">
+                            <div class="gait-control-group">
+                                <h4>Selected Age</h4>
+                                <div class="stat-value" id="gaitAgeStat">-</div>
+                                <div class="gait-slider-control">
+                                    <label for="gaitAgeSlider">Select Age (months):</label>
+                                    <input type="range" id="gaitAgeSlider" min="40" max="163" step="1" value="40">
+                                </div>
+                            </div>
+                            <div class="gait-control-group">
+                                <h4>Speed Filter</h4>
+                                <div class="stat-value" id="gaitSpeedStat">-</div>
+                                <div class="gait-slider-control">
+                                    <label for="gaitSpeedSlider">Min Speed (m/s):</label>
+                                    <input type="range" id="gaitSpeedSlider" min="0.8" max="1.5" step="0.01" value="0.8">
+                                </div>
+                            </div>
+                            <div class="gait-control-group">
+                                <h4>Leg Length</h4>
+                                <div class="stat-value" id="gaitLegLengthStat">-</div>
+                                <div class="gait-slider-control">
+                                    <label for="gaitLegSlider">Min Leg Length (in):</label>
+                                    <input type="range" id="gaitLegSlider" min="15" max="40" step="0.1" value="15">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="gait-chart-container">
+                            <canvas id="gaitSpeedChart"></canvas>
+                            <div class="gait-animation-container">
+                                <div class="gait-ground">
+                                    <div class="gait-walker" id="gaitWalker"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="story-section final" id="finale">
             <div class="content">
                 <h2>The End... Or Is It?</h2>
                 <p>With the quest complete, the 8-bit kid stands transformed. But in the digital realm, every ending is just a new beginning. The adventure continues...</p>
+                
+                <div class="writeup-section">
+                    <h3>Final Project Writeup</h3>
+                    
+                    <div class="writeup-question">
+                        <h4>What have we done so far?</h4>
+                        <div class="writeup-answer">
+                            <p>We began by selecting the Gait Maturation Database from PhysioNet since this aligns with our narrative goals and provides a strong foundation for interactive storytelling.</p>
+                            <p>Building on this, we developed a clear and cohesive narrative to guide both our visualizations and overall user experience.</p>
+                            <p>To inform our design decisions, we created several exploratory visualizations, which helped us better understand the dataset and finalize the concept for our main visualization.</p>
+                            <p>With the direction established, we set up our project website and have started shaping its structure, integrating initial visual components and explanatory content.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="writeup-question">
+                        <h4>What will be the most challenging part of our project to design and why?</h4>
+                        <div class="writeup-answer">
+                            <p>One of the core interactive elements we're designing is an animated child character walking along the side of the page.</p>
+                            <p>The walking speed of this character will dynamically respond to the data being shown, creating a narrative-driven form of interaction.</p>
+                            <p>This integration of animation and data poses a significant design challenge, as it requires seamless coordination between real-time data updates and smooth animation behavior.</p>
+                            <p>Striking a balance between engaging motion and clarity of information will demand both technical precision and creative decision-making.</p>
+                        </div>
+                    </div>
+                </div>
+                
                 <button class="restart-btn" onclick="restartJourney()">Start New Adventure</button>
             </div>
         </section>

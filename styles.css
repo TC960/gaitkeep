@@ -455,6 +455,16 @@ body {
 .final {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
     text-align: center;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+.final .content {
+    max-width: 1000px;
+    min-height: auto;
+    padding: 2rem;
 }
 
 .restart-btn {
@@ -958,4 +968,601 @@ body {
     color: white;
     padding: 8px;
     font-family: 'Courier New', monospace;
+}
+
+/* Restart button */
+.restart-btn {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.restart-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Gait Visualization Styles */
+.gait-visualization {
+    margin-top: 0.5rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.gait-filters {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.gait-filters > div {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+
+.gait-filters > div:hover {
+    border-color: rgba(76, 205, 196, 0.6);
+    background: rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 205, 196, 0.2);
+}
+
+.gait-filters label {
+    font-weight: 700;
+    color: #FFD700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.gait-filters select {
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    border: 2px solid rgba(76, 205, 196, 0.4);
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 100px;
+    backdrop-filter: blur(5px);
+}
+
+.gait-filters select:hover {
+    border-color: #4ECDC4;
+    box-shadow: 0 0 12px rgba(76, 205, 196, 0.4);
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.gait-filters select:focus {
+    outline: none;
+    border-color: #FF6B6B;
+    box-shadow: 0 0 16px rgba(255, 107, 107, 0.5);
+}
+
+.gait-visual-container {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    margin-bottom: 0.5rem;
+}
+
+.gait-controls-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.gait-control-group {
+    background: rgba(255, 255, 255, 0.98);
+    padding: 0.75rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+}
+
+.gait-control-group:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    border-color: rgba(76, 205, 196, 0.3);
+}
+
+.gait-control-group h4 {
+    margin: 0 0 0.35rem 0;
+    color: #2c3e50;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    text-align: center;
+    border-bottom: 2px solid #FF6B6B;
+    padding-bottom: 0.25rem;
+    font-weight: 800;
+}
+
+.gait-control-group .stat-value {
+    font-size: 14px;
+    font-weight: 900;
+    color: #FF6B6B;
+    text-align: center;
+    margin: 0.35rem 0;
+    text-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+.gait-chart-container {
+    height: 400px;
+    background: white;
+    padding: 1.25rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    position: relative;
+    backdrop-filter: blur(5px);
+}
+
+.gait-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.gait-animation-container {
+    position: absolute;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    width: 150px;
+    height: 95px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: rgba(76, 205, 196, 0.08);
+    border: 2px solid rgba(76, 205, 196, 0.3);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+.gait-ground {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(76, 205, 196, 0.25) 8px, transparent 8px) repeat-x;
+    background-size: 16px 100%;
+    position: relative;
+}
+
+.gait-walker {
+    width: 42px;
+    height: 78px;
+    background: url('https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExMHR4NHl1emN0Z2gza2w1ZjAxazRoYWJ6NWU5NjZmeGU5b2Z5eGF1aCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xUOrvW5lZpuaNJgpVu/giphy.gif') no-repeat center/contain;
+    position: absolute;
+    top: 8px;
+    left: 0;
+    animation: gait-walk-loop linear infinite;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+@keyframes gait-walk-loop {
+    from { left: -42px; }
+    to { left: 100%; }
+}
+
+.gait-slider-control {
+    margin-top: 0.35rem;
+}
+
+.gait-slider-control label {
+    display: block;
+    font-size: 8px;
+    color: #555;
+    margin-bottom: 0.25rem;
+    text-align: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.gait-slider-control input[type="range"] {
+    width: 100%;
+    margin: 0.25rem 0;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #FF6B6B, #4ECDC4);
+    outline: none;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.gait-slider-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #4ECDC4;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.gait-slider-control input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 6px rgba(76, 205, 196, 0.4);
+}
+
+.gait-slider-control input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #4ECDC4;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+
+.gait-data-summary {
+    display: none;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 1400px) {
+    .gait-visual-container {
+        grid-template-columns: 160px 1fr;
+        gap: 1.25rem;
+    }
+    
+    .gait-chart-container {
+        height: 360px;
+    }
+    
+    .gait-animation-container {
+        width: 135px;
+        height: 85px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .gait-visualization {
+        padding: 1rem;
+        max-width: 100%;
+    }
+    
+    .gait-visual-container {
+        grid-template-columns: 140px 1fr;
+        gap: 1rem;
+    }
+    
+    .gait-control-group {
+        padding: 0.55rem;
+    }
+    
+    .gait-control-group h4 {
+        font-size: 9px;
+        margin: 0 0 0.3rem 0;
+        padding-bottom: 0.2rem;
+    }
+    
+    .gait-control-group .stat-value {
+        font-size: 13px;
+        margin: 0.3rem 0;
+    }
+    
+    .gait-chart-container {
+        height: 320px;
+        padding: 1rem;
+    }
+    
+    .gait-animation-container {
+        width: 125px;
+        height: 80px;
+    }
+    
+    .gait-slider-control {
+        margin-top: 0.3rem;
+    }
+    
+    .gait-slider-control label {
+        font-size: 7px;
+        margin-bottom: 0.2rem;
+    }
+    
+    .gait-slider-control input[type="range"] {
+        margin: 0.2rem 0;
+        height: 3px;
+    }
+    
+    .gait-slider-control input[type="range"]::-webkit-slider-thumb {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .gait-slider-control input[type="range"]::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+    }
+}
+
+@media (max-width: 1000px) {
+    .gait-visual-container {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .gait-controls-left {
+        flex-direction: row;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
+    
+    .gait-control-group {
+        flex: 1;
+        min-width: 140px;
+        max-width: 200px;
+        padding: 0.5rem;
+    }
+    
+    .gait-chart-container {
+        height: 280px;
+        order: -1;
+    }
+    
+    .gait-animation-container {
+        position: static;
+        width: 100%;
+        height: 65px;
+        margin-top: 0.75rem;
+        border-radius: 8px;
+    }
+}
+
+@media (max-width: 768px) {
+    .gait-visualization {
+        padding: 0.75rem;
+        margin-top: 0.25rem;
+    }
+    
+    .gait-filters {
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .gait-filters > div {
+        padding: 0.4rem 0.75rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 0.4rem;
+    }
+    
+    .gait-filters label {
+        margin-bottom: 0;
+        font-size: 10px;
+    }
+    
+    .gait-filters select {
+        font-size: 10px;
+        padding: 0.4rem;
+        min-width: 85px;
+    }
+    
+    .gait-controls-left {
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    
+    .gait-chart-container {
+        height: 240px;
+        padding: 0.75rem;
+    }
+    
+    .gait-control-group {
+        min-width: unset;
+        max-width: unset;
+        padding: 0.4rem;
+    }
+    
+    .gait-control-group h4 {
+        font-size: 9px;
+        margin: 0 0 0.25rem 0;
+        padding-bottom: 0.15rem;
+    }
+    
+    .gait-control-group .stat-value {
+        font-size: 12px;
+        margin: 0.25rem 0;
+    }
+    
+    .gait-animation-container {
+        height: 55px;
+    }
+    
+    .gait-slider-control {
+        margin-top: 0.25rem;
+    }
+    
+    .gait-slider-control label {
+        font-size: 7px;
+        margin-bottom: 0.15rem;
+    }
+    
+    .gait-slider-control input[type="range"] {
+        margin: 0.15rem 0;
+        height: 3px;
+    }
+    
+    .gait-slider-control input[type="range"]::-webkit-slider-thumb {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .gait-slider-control input[type="range"]::-moz-range-thumb {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+/* Writeup Section Styles */
+.writeup-section {
+    margin: 3rem auto 2rem;
+    max-width: 900px;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.writeup-section h3 {
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    margin-bottom: 2rem;
+    text-align: center;
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.writeup-question {
+    margin-bottom: 2.5rem;
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.writeup-question:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(76, 205, 196, 0.3);
+}
+
+.writeup-question:last-child {
+    margin-bottom: 0;
+}
+
+.writeup-question h4 {
+    font-size: clamp(1.2rem, 3vw, 1.5rem);
+    margin-bottom: 1.5rem;
+    color: #4ecdc4;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 10px rgba(76, 205, 196, 0.3);
+    border-bottom: 2px solid rgba(76, 205, 196, 0.4);
+    padding-bottom: 0.5rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.writeup-answer {
+    margin-left: 0;
+}
+
+.writeup-answer p {
+    font-size: clamp(1rem, 2.2vw, 1.1rem);
+    line-height: 1.6;
+    margin-bottom: 1.2rem;
+    opacity: 0.95;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.95);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.writeup-answer p:last-child {
+    margin-bottom: 0;
+}
+
+/* Custom scrollbar for webkit browsers */
+.final::-webkit-scrollbar {
+    width: 8px;
+}
+
+.final::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.final::-webkit-scrollbar-thumb {
+    background: rgba(76, 205, 196, 0.6);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+.final::-webkit-scrollbar-thumb:hover {
+    background: rgba(76, 205, 196, 0.8);
+}
+
+/* Mobile responsive for writeup */
+@media (max-width: 768px) {
+    .final {
+        padding: 1rem;
+    }
+    
+    .final .content {
+        padding: 1rem;
+    }
+    
+    .writeup-section {
+        margin: 2rem auto 1.5rem;
+        padding: 1.5rem;
+    }
+    
+    .writeup-question {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .writeup-question h4 {
+        margin-bottom: 1rem;
+        letter-spacing: 0.3px;
+    }
+    
+    .writeup-answer p {
+        margin-bottom: 1rem;
+        line-height: 1.5;
+        font-size: clamp(0.9rem, 2vw, 1rem);
+    }
+    
+    .restart-btn {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+        margin-top: 2rem;
+    }
 } 

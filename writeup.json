@@ -2,7 +2,7 @@
     "title": "Final Project Writeup",
     "sections": [
         {
-            "question": "What have you done so far?",
+            "question": "What have we done so far?",
             "answer": [
                 "We began by selecting the Gait Maturation Database from PhysioNet since this aligns with our narrative goals and provides a strong foundation for interactive storytelling.",
                 "Building on this, we developed a clear and cohesive narrative to guide both our visualizations and overall user experience.",
@@ -11,7 +11,7 @@
             ]
         },
         {
-            "question": "What will be the most challenging part of your project to design and why?",
+            "question": "What will be the most challenging part of our project to design and why?",
             "answer": [
                 "One of the core interactive elements we’re designing is an animated child character walking along the side of the page.",
                 "The walking speed of this character will dynamically respond to the data being shown, creating a narrative-driven form of interaction.",

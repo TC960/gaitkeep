@@ -13,21 +13,26 @@ class ScrollytellingEngine {
         this.lastScrollTime = 0;
         this.scrollVelocity = 0;
         this.scrollDirection = 0; // -1 for up, 1 for down, 0 for none
-        this.snapThreshold = 50; // Minimum scroll distance to trigger snap
-        this.velocityThreshold = 0.5; // Maximum velocity to allow snapping
-        this.snapCooldownTime = 800; // Cooldown period in ms
+        this.snapThreshold = 30; // Reduced for more sensitivity
+        this.velocityThreshold = 0.3; // Reduced for more sensitivity
+        this.snapCooldownTime = 600; // Reduced cooldown
         this.debounceTimer = null;
-        this.snapDebounceTime = 150; // Debounce time for snap triggers
+        this.snapDebounceTime = 100; // Reduced debounce time
         
         // Scroll Intent Detection
         this.wheelDelta = 0;
         this.touchStartY = 0;
         this.touchEndY = 0;
-        this.scrollIntentThreshold = 30;
+        this.scrollIntentThreshold = 20; // Reduced threshold
         
         // Section State Management
         this.section1Revealed = false;
         this.section2Animated = false;
+        this.section3Animated = false;
+        this.section4Animated = false;
+        this.section5Animated = false;
+        this.section6Animated = false;
+        this.section7Animated = false;
         this.sectionTimers = {}; // Track timers for each section
         this.activeIntervals = {}; // Track active intervals
         
@@ -52,12 +57,16 @@ class ScrollytellingEngine {
     // Load and parse CSV data
     async loadGaitData() {
         try {
-            const response = await fetch('gait-maturation-database-1.0.0/data/table.csv');
+            const response = await fetch('table.csv'); // Use consistent path
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const csvText = await response.text();
             this.parseCSVData(csvText);
-            console.log('📊 Gait data loaded:', this.gaitData.length, 'records');
+            console.log('📊 Gait data loaded:', this.gaitData.length, 'records - USING REAL DATA ✅');
         } catch (error) {
             console.error('❌ Error loading gait data:', error);
+            console.warn('🔄 Falling back to mock data...');
             // Fallback to sample data if CSV fails to load
             this.createFallbackData();
         }
@@ -96,11 +105,13 @@ class ScrollytellingEngine {
     
     // Fallback data if CSV loading fails
     createFallbackData() {
+        console.warn('⚠️  USING MOCK DATA - Real CSV failed to load!');
         this.gaitData = [
             { height: 40, speed: 1.04, group: 'young' },
             { height: 47, speed: 1.32, group: 'middle' },
             { height: 60, speed: 1.26, group: 'old' }
         ];
+        console.log('📊 Mock data created:', this.gaitData.length, 'records - USING MOCK DATA ❌');
     }
     
     // Filter data by age group
@@ -185,8 +196,8 @@ class ScrollytellingEngine {
     }
     
     // Update data points visualization
-    updateDataPointsVisualization(ageGroup = 'all') {
-        const container = document.getElementById('dataPointsContainer');
+    updateDataPointsVisualization(ageGroup = 'all', containerId = 'dataPointsContainer') {
+        const container = document.getElementById(containerId);
         if (!container) return;
         
         // Clear existing points
@@ -214,9 +225,11 @@ class ScrollytellingEngine {
         console.log(`📊 Updated visualization for ${ageGroup} group:`, dataPoints.length, 'points');
     }
     
-    // 1. SCROLL INTENT DETECTION
+    // Enhanced Scroll Intent Detection
     startMagneticScrollDetection() {
         let animationFrame = null;
+        let scrollStabilizationTimer = null;
+        let lastScrollTime = 0;
         
         const updateScrollState = () => {
             if (this.isSnapping) {
@@ -247,10 +260,22 @@ class ScrollytellingEngine {
             
             this.lastScrollPosition = currentScrollTop;
             this.lastScrollTime = currentTime;
+            lastScrollTime = currentTime;
             animationFrame = null;
         };
         
-        // Wheel event detection
+        // Auto-trigger content loading when scroll stabilizes
+        const checkScrollStabilization = () => {
+            clearTimeout(scrollStabilizationTimer);
+            scrollStabilizationTimer = setTimeout(() => {
+                // Trigger animations for current section after 100ms of scroll stability
+                this.autoTriggerSectionAnimations();
+            }, 100);
+        };
+        
+        this.checkScrollStabilization = checkScrollStabilization;
+        
+        // Wheel event detection - more responsive
         window.addEventListener('wheel', (e) => {
             if (this.isSnapping || this.snapCooldown) {
                 e.preventDefault();
@@ -268,9 +293,12 @@ class ScrollytellingEngine {
             if (!animationFrame) {
                 animationFrame = requestAnimationFrame(updateScrollState);
             }
+            
+            // Trigger stabilization check
+            checkScrollStabilization();
         }, { passive: false });
         
-        // Touch event detection
+        // Touch event detection - more responsive
         window.addEventListener('touchstart', (e) => {
             this.touchStartY = e.touches[0].clientY;
         }, { passive: true });
@@ -284,6 +312,9 @@ class ScrollytellingEngine {
             if (!animationFrame) {
                 animationFrame = requestAnimationFrame(updateScrollState);
             }
+            
+            // Trigger stabilization check
+            checkScrollStabilization();
         }, { passive: false });
         
         window.addEventListener('touchend', (e) => {
@@ -295,15 +326,21 @@ class ScrollytellingEngine {
             if (Math.abs(touchDelta) > this.scrollIntentThreshold) {
                 this.detectScrollIntent('touch', touchDelta > 0 ? 1 : -1);
             }
+            
+            // Trigger stabilization check after touch ends
+            checkScrollStabilization();
         }, { passive: true });
         
-        // Natural scroll detection with debouncing
+        // Natural scroll detection with automatic triggering
         window.addEventListener('scroll', () => {
             if (this.isSnapping) return;
             
             if (!animationFrame) {
                 animationFrame = requestAnimationFrame(updateScrollState);
             }
+            
+            // Always check for stabilization on scroll
+            checkScrollStabilization();
             
             // Debounced snap check for natural scrolling
             clearTimeout(this.debounceTimer);
@@ -313,6 +350,91 @@ class ScrollytellingEngine {
                 }
             }, this.snapDebounceTime);
         }, { passive: true });
+    }
+    
+    // Auto-trigger animations for current section
+    autoTriggerSectionAnimations() {
+        const currentSectionData = this.sections[this.currentSection];
+        if (!currentSectionData) return;
+        
+        const sectionId = currentSectionData.id;
+        const progress = currentSectionData.progress;
+        
+        // Only trigger if section is sufficiently visible
+        if (currentSectionData.state === 'visible' || 
+            (currentSectionData.state === 'entering' && progress > 0.1)) {
+            
+            console.log(`🎬 Auto-triggering animations for section: ${sectionId}`);
+            
+            switch(sectionId) {
+                case 'section1':
+                    if (!this.section1Revealed) {
+                        this.section1Revealed = true;
+                        setTimeout(() => {
+                            const revealText = document.querySelector('#section1 .reveal-text');
+                            if (revealText && this.currentSection === 1) {
+                                revealText.classList.add('visible');
+                            }
+                        }, 100); // 100ms delay as requested
+                    }
+                    break;
+                    
+                case 'section2':
+                    if (!this.section2Animated) {
+                        this.section2Animated = true;
+                        setTimeout(() => {
+                            if (this.currentSection === 2) {
+                                this.startNumberLineAnimation('young');
+                            }
+                        }, 100);
+                    }
+                    break;
+                    
+                case 'section3':
+                    if (!this.section3Animated) {
+                        this.section3Animated = true;
+                        setTimeout(() => {
+                            if (this.currentSection === 3) {
+                                this.startNumberLineAnimation('middle');
+                            }
+                        }, 100);
+                    }
+                    break;
+                    
+                case 'section4':
+                    if (!this.section4Animated) {
+                        this.section4Animated = true;
+                        setTimeout(() => {
+                            if (this.currentSection === 4) {
+                                this.startNumberLineAnimation('old');
+                            }
+                        }, 100);
+                    }
+                    break;
+                    
+                case 'section5':
+                    if (!this.section5Animated) {
+                        this.section5Animated = true;
+                        setTimeout(() => {
+                            if (this.currentSection === 5) {
+                                this.startComparisonAnimation();
+                            }
+                        }, 100);
+                    }
+                    break;
+                    
+                case 'section6':
+                    if (!this.section6Animated) {
+                        this.section6Animated = true;
+                        setTimeout(() => {
+                            if (this.currentSection === 6) {
+                                this.startGrowthTrendsAnimation();
+                            }
+                        }, 100);
+                    }
+                    break;
+            }
+        }
     }
     
     // 2. CALCULATE TARGET SLIDE
@@ -424,6 +546,11 @@ class ScrollytellingEngine {
             
             // Initialize new section state
             this.initializeSectionState(targetIndex);
+            
+            // Trigger animations exactly 100ms after snap completion
+            setTimeout(() => {
+                this.triggerSectionAnimations(targetIndex);
+            }, 100);
             
             // Double-check alignment after snap
             setTimeout(() => {
@@ -568,22 +695,123 @@ class ScrollytellingEngine {
         
         // Update current section index if not snapping
         if (!this.isSnapping) {
-            const activeSection = this.sections.find(s => s.state === 'visible' || s.state === 'entering');
-            if (activeSection) {
-                // Check if we're moving to a different section
-                if (this.currentSection !== activeSection.index) {
+            const activeSection = this.sections.find(s => s.state === 'visible');
+            if (activeSection && this.currentSection !== activeSection.index) {
                     // Reset the previous section's state
                     this.resetSectionState(this.currentSection);
-                    this.currentSection = activeSection.index;
+                const newSectionIndex = activeSection.index;
+                this.currentSection = newSectionIndex;
                     // Initialize the new section
                     this.initializeSectionState(this.currentSection);
-                }
+                
+                console.log(`📍 Section changed to: ${this.sections[newSectionIndex].id}`);
+                
+                // Trigger animations exactly 100ms after section becomes fully visible
+                this.scheduleAnimationTrigger(newSectionIndex);
             }
         }
         
         // Calculate overall progress
         const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
         this.scrollProgress = Math.min(window.pageYOffset / maxScroll, 1);
+    }
+    
+    // Schedule animation trigger for when section is fully loaded
+    scheduleAnimationTrigger(sectionIndex) {
+        const sectionData = this.sections[sectionIndex];
+        if (!sectionData) return;
+        
+        // Clear any existing timer for this section
+        const timerKey = `section-${sectionIndex}-trigger`;
+        if (this.sectionTimers[timerKey]) {
+            clearTimeout(this.sectionTimers[timerKey]);
+        }
+        
+        // Set up the 100ms trigger timer
+        const triggerTimer = setTimeout(() => {
+            // Double-check we're still in the same section
+            if (this.currentSection === sectionIndex) {
+                console.log(`🎬 Auto-triggering animations for ${sectionData.id} after 100ms`);
+                this.triggerSectionAnimations(sectionIndex);
+            }
+        }, 100); // Exactly 100ms as requested
+        
+        // Store the timer
+        if (!this.sectionTimers[timerKey]) {
+            this.sectionTimers[timerKey] = [];
+        }
+        this.sectionTimers[timerKey] = triggerTimer;
+    }
+    
+    // Trigger animations for specific section
+    triggerSectionAnimations(sectionIndex) {
+        const sectionData = this.sections[sectionIndex];
+        if (!sectionData) return;
+        
+        const sectionId = sectionData.id;
+        
+        switch(sectionId) {
+            case 'section1':
+                if (!this.section1Revealed) {
+                    this.section1Revealed = true;
+                    const revealText = document.querySelector('#section1 .reveal-text');
+                    if (revealText && this.currentSection === sectionIndex) {
+                        revealText.classList.add('visible');
+                        console.log('✨ Section 1 text revealed');
+                    }
+                }
+                break;
+                
+            case 'section2':
+                if (!this.section2Animated) {
+                    this.section2Animated = true;
+                    if (this.currentSection === sectionIndex) {
+                        this.startNumberLineAnimation('young');
+                        console.log('✨ Section 2 young animation started');
+                    }
+                }
+                break;
+                
+            case 'section3':
+                if (!this.section3Animated) {
+                    this.section3Animated = true;
+                    if (this.currentSection === sectionIndex) {
+                        this.startNumberLineAnimation('middle');
+                        console.log('✨ Section 3 middle animation started');
+                    }
+                }
+                break;
+                
+            case 'section4':
+                if (!this.section4Animated) {
+                    this.section4Animated = true;
+                    if (this.currentSection === sectionIndex) {
+                        this.startNumberLineAnimation('old');
+                        console.log('✨ Section 4 old animation started');
+                    }
+                }
+                break;
+                
+            case 'section5':
+                if (!this.section5Animated) {
+                    this.section5Animated = true;
+                    if (this.currentSection === sectionIndex) {
+                        this.startComparisonAnimation();
+                        console.log('✨ Section 5 comparison animation started');
+                    }
+                }
+                break;
+                
+            case 'section6':
+                if (!this.section6Animated) {
+                    this.section6Animated = true;
+                    if (this.currentSection === sectionIndex) {
+                        this.startGrowthTrendsAnimation();
+                        console.log('✨ Section 6 growth trends animation started');
+                    }
+                }
+                break;
+        }
     }
     
     // Reset the state of a specific section
@@ -607,33 +835,38 @@ class ScrollytellingEngine {
                 break;
                 
             case 'section2':
-                // Reset Chapter 2 number line animation
+                // Reset Chapter 2 - Young children animation
                 this.section2Animated = false;
-                this.resetNumberLineAnimation();
+                this.resetNumberLineAnimation('young');
                 break;
                 
             case 'section3':
-                // Reset any section 3 specific states
-                const kidSvg = document.getElementById('kidSvg');
-                if (kidSvg) {
-                    kidSvg.classList.remove('jumping');
-                }
+                // Reset Chapter 3 - Middle children animation
+                this.section3Animated = false;
+                this.resetNumberLineAnimation('middle');
                 break;
                 
             case 'section4':
-                // Reset section 4 spinning animation
-                const kidSvg4 = document.getElementById('kidSvg');
-                if (kidSvg4) {
-                    kidSvg4.style.animation = '';
-                }
+                // Reset Chapter 4 - Old children animation
+                this.section4Animated = false;
+                this.resetNumberLineAnimation('old');
                 break;
                 
             case 'section5':
-                // Reset section 5 final power animation
-                const kidSvg5 = document.getElementById('kidSvg');
-                if (kidSvg5) {
-                    kidSvg5.style.animation = '';
-                }
+                // Reset Chapter 5 - Comparison animation
+                this.section5Animated = false;
+                this.resetComparisonAnimation();
+                break;
+                
+            case 'section6':
+                // Reset Chapter 6 - Growth trends animation
+                this.section6Animated = false;
+                this.resetGrowthTrendsAnimation();
+                break;
+                
+            case 'section7':
+                // Reset Chapter 7 - Gait visualization (previously section 6)
+                this.section7Animated = false;
                 break;
                 
             case 'finale':
@@ -666,42 +899,109 @@ class ScrollytellingEngine {
             case 'section2':
                 this.section2Animated = false;
                 break;
+            case 'section3':
+                this.section3Animated = false;
+                break;
+            case 'section4':
+                this.section4Animated = false;
+                break;
+            case 'section5':
+                this.section5Animated = false;
+                break;
+            case 'section6':
+                this.section6Animated = false;
+                break;
+            case 'section7':
+                this.section7Animated = false;
+                break;
         }
     }
     
-    // Reset number line animation to initial state
-    resetNumberLineAnimation() {
-        const numberlineKid = document.getElementById('numberlineKid');
-        const speedValue = document.getElementById('speedValue');
-        const dataPoints = document.querySelectorAll('.data-point');
+    // Reset number line animation to initial state for specific age group
+    resetNumberLineAnimation(ageGroup = 'young') {
+        let kidElement, speedElement, containerElement;
         
-        if (numberlineKid) {
+        switch(ageGroup) {
+            case 'young':
+                kidElement = document.getElementById('numberlineKid');
+                speedElement = document.getElementById('speedValue');
+                containerElement = document.getElementById('dataPointsContainer');
+                break;
+            case 'middle':
+                kidElement = document.getElementById('numberlineKidMiddle');
+                speedElement = document.getElementById('speedValueMiddle');
+                containerElement = document.getElementById('dataPointsContainerMiddle');
+                break;
+            case 'old':
+                kidElement = document.getElementById('numberlineKidOld');
+                speedElement = document.getElementById('speedValueOld');
+                containerElement = document.getElementById('dataPointsContainerOld');
+                break;
+        }
+        
+        if (kidElement) {
             // Reset kid position to start
-            numberlineKid.style.left = '0%';
-            numberlineKid.classList.remove('walking');
-            numberlineKid.style.animation = '';
+            kidElement.style.left = '0%';
+            kidElement.classList.remove('walking');
+            kidElement.style.animation = '';
         }
         
-        if (speedValue) {
+        if (speedElement) {
             // Reset speed display
-            speedValue.textContent = '0.0 m/s';
-            speedValue.style.fontSize = '1.8rem';
-            speedValue.style.color = '#ff6b6b';
-            speedValue.style.transform = 'scale(1)';
-            speedValue.style.textShadow = '0 0 15px rgba(255, 107, 107, 0.5)';
+            speedElement.textContent = '0.0 m/s';
+            speedElement.style.fontSize = '1.8rem';
+            speedElement.style.color = '#ff6b6b';
+            speedElement.style.transform = 'scale(1)';
+            speedElement.style.textShadow = '0 0 15px rgba(255, 107, 107, 0.5)';
         }
         
+        if (containerElement) {
         // Hide all data points
+            const dataPoints = containerElement.querySelectorAll('.data-point');
         dataPoints.forEach(point => {
             point.classList.remove('visible');
             point.style.animation = '';
         });
+        }
         
         // Clear any trail elements
         const trails = document.querySelectorAll('[style*="trailFade"]');
         trails.forEach(trail => trail.remove());
         
-        console.log('🔄 Number line animation reset');
+        console.log(`🔄 Number line animation reset for ${ageGroup} group`);
+    }
+    
+    // Reset comparison animation
+    resetComparisonAnimation() {
+        // Reset race kids
+        const raceKids = ['raceKidYoung', 'raceKidMiddle', 'raceKidOld'];
+        raceKids.forEach(kidId => {
+            const kid = document.getElementById(kidId);
+            if (kid) {
+                kid.style.left = '0%';
+                kid.style.animation = '';
+            }
+        });
+        
+        // Reset comparison speeds
+        const comparisonSpeeds = ['speedValueComparisonYoung', 'speedValueComparisonMiddle', 'speedValueComparisonOld'];
+        comparisonSpeeds.forEach(speedId => {
+            const speedElement = document.getElementById(speedId);
+            if (speedElement) {
+                speedElement.textContent = '-';
+            }
+        });
+        
+        // Reset average speeds
+        const avgSpeeds = ['youngAvgSpeed', 'middleAvgSpeed', 'oldAvgSpeed'];
+        avgSpeeds.forEach(avgId => {
+            const avgElement = document.getElementById(avgId);
+            if (avgElement) {
+                avgElement.textContent = '-';
+            }
+        });
+        
+        console.log('🔄 Comparison animation reset');
     }
     
     // Clear any running timers for a specific section
@@ -828,6 +1128,11 @@ class ScrollytellingEngine {
         // Reset global flags
         this.section1Revealed = false;
         this.section2Animated = false;
+        this.section3Animated = false;
+        this.section4Animated = false;
+        this.section5Animated = false;
+        this.section6Animated = false;
+        this.section7Animated = false;
         
         // Reset kid character to default state
         const kidSvg = document.getElementById('kidSvg');
@@ -971,39 +1276,32 @@ class ScrollytellingEngine {
             case 'section1':
                 const glowIntensity = 20 + (progress * 15);
                 kidSvg.style.filter = `drop-shadow(0 0 ${glowIntensity}px rgba(255, 215, 0, ${0.7 + progress * 0.3}))`;
-                
-                // Trigger reveal text after 2 seconds when section becomes visible
-                if (currentSectionData.state === 'visible' && !this.section1Revealed) {
-                    this.section1Revealed = true;
-                    const timerId = setTimeout(() => {
-                        const revealText = document.querySelector('#section1 .reveal-text');
-                        if (revealText && this.currentSection === 1) { // Only if still in section 1
-                            revealText.classList.add('visible');
-                        }
-                    }, 2000);
-                    this.addSectionTimer('section1', timerId);
-                }
                 break;
             case 'section2':
+                // Young children chapter - teal glow
                 kidSvg.style.filter = `drop-shadow(0 0 18px rgba(76, 205, 196, ${0.7 + progress * 0.3}))`;
-                
-                // Trigger number line animation when section becomes visible
-                if (currentSectionData.state === 'visible' && !this.section2Animated) {
-                    this.section2Animated = true;
-                    this.startNumberLineAnimation();
-                }
                 break;
             case 'section3':
-                if (progress > 0.4) kidSvg.classList.add('jumping');
-                kidSvg.style.filter = `drop-shadow(0 0 18px rgba(255, 107, 107, ${0.7 + progress * 0.3}))`;
+                // Middle children chapter - blue glow
+                kidSvg.style.filter = `drop-shadow(0 0 18px rgba(69, 183, 209, ${0.7 + progress * 0.3}))`;
                 break;
             case 'section4':
-                kidSvg.style.animation = `kidSpin ${2.5 - progress * 0.5}s ease-in-out infinite`;
-                kidSvg.style.filter = `drop-shadow(0 0 ${25 + progress * 15}px rgba(150, 206, 180, ${0.8 + progress * 0.2}))`;
+                // Older children chapter - red glow
+                kidSvg.style.filter = `drop-shadow(0 0 18px rgba(255, 107, 107, ${0.7 + progress * 0.3}))`;
                 break;
             case 'section5':
-                kidSvg.style.animation = 'kidFinalPower 2.5s ease-in-out infinite';
-                kidSvg.style.filter = `drop-shadow(0 0 ${30 + progress * 20}px rgba(255, 255, 255, 1))`;
+                // Comparison chapter - multi-color glow
+                const colors = ['76, 205, 196', '69, 183, 209', '255, 107, 107'];
+                const colorIndex = Math.floor((progress * 3) % 3);
+                kidSvg.style.filter = `drop-shadow(0 0 25px rgba(${colors[colorIndex]}, ${0.8 + progress * 0.2}))`;
+                break;
+            case 'section6':
+                // Growth trends chapter - analytical glow
+                kidSvg.style.filter = `drop-shadow(0 0 ${20 + progress * 10}px rgba(254, 202, 87, ${0.7 + progress * 0.3}))`;
+                break;
+            case 'section7':
+                // Gait analysis chapter - scientific glow (previously section6)
+                kidSvg.style.filter = `drop-shadow(0 0 ${25 + progress * 15}px rgba(150, 206, 180, ${0.8 + progress * 0.2}))`;
                 break;
             case 'finale':
                 kidSvg.style.animation = 'kidVictory 2s ease-in-out infinite';
@@ -1013,17 +1311,38 @@ class ScrollytellingEngine {
     }
     
     // Enhanced Number Line Animation with real data
-    startNumberLineAnimation() {
-        const numberlineKid = document.getElementById('numberlineKid');
-        const speedValue = document.getElementById('speedValue');
+    startNumberLineAnimation(ageGroup = 'young') {
+        let numberlineKid, speedValue, sectionId, containerId;
+        
+        // Set up elements based on age group
+        switch(ageGroup) {
+            case 'young':
+                numberlineKid = document.getElementById('numberlineKid');
+                speedValue = document.getElementById('speedValue');
+                sectionId = 'section2';
+                containerId = 'dataPointsContainer';
+                break;
+            case 'middle':
+                numberlineKid = document.getElementById('numberlineKidMiddle');
+                speedValue = document.getElementById('speedValueMiddle');
+                sectionId = 'section3';
+                containerId = 'dataPointsContainerMiddle';
+                break;
+            case 'old':
+                numberlineKid = document.getElementById('numberlineKidOld');
+                speedValue = document.getElementById('speedValueOld');
+                sectionId = 'section4';
+                containerId = 'dataPointsContainerOld';
+                break;
+        }
         
         if (!numberlineKid || !speedValue) return;
         
         // Get filtered data points for current age group
-        const dataPoints = this.generateDataPoints(this.currentAgeGroup);
+        const dataPoints = this.generateDataPoints(ageGroup);
         
         if (dataPoints.length === 0) {
-            console.log('⚠️ No data points available for animation');
+            console.log(`⚠️ No data points available for ${ageGroup} animation`);
             return;
         }
         
@@ -1032,27 +1351,29 @@ class ScrollytellingEngine {
         const positions = [0, ...dataPoints.map(d => Math.min(Math.max(d.position, 10), 90))];
         let currentStep = 0;
         
+        const sectionIndex = this.sections.findIndex(s => s.id === sectionId);
+        
         const animateStep = () => {
-            // Check if we're still in section 2
-            if (this.currentSection !== 2) {
-                console.log('🛑 Animation stopped - left section 2');
+            // Check if we're still in the correct section
+            if (this.currentSection !== sectionIndex) {
+                console.log(`🛑 Animation stopped - left ${sectionId}`);
                 return;
             }
             
             if (currentStep >= speeds.length) {
                 // Final animation - show completion
                 const finalTimerId = setTimeout(() => {
-                    if (this.currentSection === 2) { // Only if still in section 2
-                        speedValue.style.color = '#4ecdc4';
-                        speedValue.style.textShadow = '0 0 20px rgba(76, 205, 196, 0.8)';
+                    if (this.currentSection === sectionIndex) {
+                        speedValue.style.color = this.getAgeGroupColor(ageGroup);
+                        speedValue.style.textShadow = `0 0 20px ${this.getAgeGroupColor(ageGroup, 0.8)}`;
                     }
                 }, 1000);
-                this.addSectionTimer('section2', finalTimerId);
+                this.addSectionTimer(sectionId, finalTimerId);
                 
                 // Show all data points after animation completes
                 setTimeout(() => {
-                    if (this.currentSection === 2) {
-                        this.showAllDataPoints();
+                    if (this.currentSection === sectionIndex) {
+                        this.showAllDataPoints(ageGroup, containerId);
                     }
                 }, 1500);
                 return;
@@ -1066,13 +1387,13 @@ class ScrollytellingEngine {
             speedValue.style.color = '#feca57';
             
             const speedUpdateTimerId = setTimeout(() => {
-                if (this.currentSection === 2) { // Only if still in section 2
+                if (this.currentSection === sectionIndex) {
                     speedValue.textContent = `${speed.toFixed(2)} m/s`;
                     speedValue.style.transform = 'scale(1)';
                     speedValue.style.color = '#ff6b6b';
                 }
             }, 200);
-            this.addSectionTimer('section2', speedUpdateTimerId);
+            this.addSectionTimer(sectionId, speedUpdateTimerId);
             
             // Move kid on number line with enhanced animation
             numberlineKid.style.left = `${position}%`;
@@ -1085,63 +1406,150 @@ class ScrollytellingEngine {
             
             // Enhanced walking animation duration
             const walkingTimerId = setTimeout(() => {
-                if (this.currentSection === 2) { // Only if still in section 2
+                if (this.currentSection === sectionIndex) {
                     numberlineKid.classList.remove('walking');
                     // Add a small bounce when stopping
                     numberlineKid.style.animation = 'kidLand 0.3s ease-out';
                     const landTimerId = setTimeout(() => {
-                        if (this.currentSection === 2) {
+                        if (this.currentSection === sectionIndex) {
                             numberlineKid.style.animation = '';
                         }
                     }, 300);
-                    this.addSectionTimer('section2', landTimerId);
+                    this.addSectionTimer(sectionId, landTimerId);
                 }
             }, 2500);
-            this.addSectionTimer('section2', walkingTimerId);
+            this.addSectionTimer(sectionId, walkingTimerId);
             
             currentStep++;
             
             // Continue to next step with dynamic timing
             if (currentStep < speeds.length) {
                 const nextStepTimerId = setTimeout(animateStep, 3500);
-                this.addSectionTimer('section2', nextStepTimerId);
+                this.addSectionTimer(sectionId, nextStepTimerId);
             }
         };
         
         // Initialize data points visualization
-        this.updateDataPointsVisualization(this.currentAgeGroup);
+        this.updateDataPointsVisualization(ageGroup, containerId);
         
         // Start animation with a dramatic countdown
-        this.showCountdown(() => {
+        this.showCountdown(ageGroup, speedValue, sectionId, sectionIndex, () => {
             const startTimerId = setTimeout(animateStep, 500);
-            this.addSectionTimer('section2', startTimerId);
+            this.addSectionTimer(sectionId, startTimerId);
         });
     }
     
-    // Show all data points with staggered animation
-    showAllDataPoints() {
-        const dataPointElements = document.querySelectorAll('#dataPointsContainer .data-point');
+    // Get color scheme for age groups
+    getAgeGroupColor(ageGroup, opacity = 1) {
+        switch(ageGroup) {
+            case 'young': return `rgba(76, 205, 196, ${opacity})`;
+            case 'middle': return `rgba(69, 183, 209, ${opacity})`;
+            case 'old': return `rgba(255, 107, 107, ${opacity})`;
+            default: return `rgba(76, 205, 196, ${opacity})`;
+        }
+    }
+    
+    // Start comparison animation for chapter 5
+    startComparisonAnimation() {
+        const youngData = this.generateDataPoints('young');
+        const middleData = this.generateDataPoints('middle');
+        const oldData = this.generateDataPoints('old');
+        
+        // Calculate average speeds
+        const youngAvg = youngData.length > 0 ? youngData.reduce((sum, d) => sum + d.speed, 0) / youngData.length : 0;
+        const middleAvg = middleData.length > 0 ? middleData.reduce((sum, d) => sum + d.speed, 0) / middleData.length : 0;
+        const oldAvg = oldData.length > 0 ? oldData.reduce((sum, d) => sum + d.speed, 0) / oldData.length : 0;
+        
+        // Update comparison displays
+        setTimeout(() => {
+            if (this.currentSection === 5) {
+                this.updateComparisonDisplay('young', youngAvg);
+                this.updateComparisonDisplay('middle', middleAvg);
+                this.updateComparisonDisplay('old', oldAvg);
+                this.startRaceAnimation(youngAvg, middleAvg, oldAvg);
+            }
+        }, 1000);
+    }
+    
+    // Update comparison display for specific age group
+    updateComparisonDisplay(ageGroup, avgSpeed) {
+        const speedElement = document.getElementById(`speedValueComparison${ageGroup.charAt(0).toUpperCase() + ageGroup.slice(1)}`);
+        
+        if (speedElement) {
+            speedElement.textContent = `${avgSpeed.toFixed(2)} m/s`;
+            speedElement.style.color = this.getAgeGroupColor(ageGroup).replace('1)', '1)');
+        }
+    }
+    
+    // Start race animation
+    startRaceAnimation(youngSpeed, middleSpeed, oldSpeed) {
+        const maxSpeed = Math.max(youngSpeed, middleSpeed, oldSpeed);
+        const animationDuration = 4000; // 4 seconds
+        
+        // Calculate final positions based on relative speeds
+        const youngPosition = (youngSpeed / maxSpeed) * 80; // 80% max to leave room
+        const middlePosition = (middleSpeed / maxSpeed) * 80;
+        const oldPosition = (oldSpeed / maxSpeed) * 80;
+        
+        // Animate race kids
+        setTimeout(() => {
+            if (this.currentSection === 5) {
+                this.animateRaceKid('raceKidYoung', youngPosition, animationDuration);
+                this.animateRaceKid('raceKidMiddle', middlePosition, animationDuration);
+                this.animateRaceKid('raceKidOld', oldPosition, animationDuration);
+            }
+        }, 500);
+    }
+    
+    // Animate individual race kid
+    animateRaceKid(kidId, finalPosition, duration) {
+        const kid = document.getElementById(kidId);
+        if (!kid) return;
+        
+        kid.style.transition = `left ${duration}ms ease-out`;
+        kid.style.left = `${finalPosition}%`;
+        
+        // Add walking animation
+        kid.classList.add('racing');
+        
+        setTimeout(() => {
+            kid.classList.remove('racing');
+        }, duration);
+    }
+    
+    // Show all data points with staggered animation for specific container
+    showAllDataPoints(ageGroup, containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        const dataPointElements = container.querySelectorAll('.data-point');
+        const sectionIndex = this.sections.findIndex(s => 
+            (ageGroup === 'young' && s.id === 'section2') ||
+            (ageGroup === 'middle' && s.id === 'section3') ||
+            (ageGroup === 'old' && s.id === 'section4')
+        );
         
         dataPointElements.forEach((element, index) => {
             const showTimerId = setTimeout(() => {
-                if (this.currentSection === 2) {
+                if (this.currentSection === sectionIndex) {
                     element.classList.add('visible');
                     element.style.animation = 'dataPointAppear 0.8s ease-out, pointShake 0.5s ease-in-out 0.8s';
                 }
             }, index * 400);
-            this.addSectionTimer('section2', showTimerId);
+            
+            const sectionId = ageGroup === 'young' ? 'section2' : ageGroup === 'middle' ? 'section3' : 'section4';
+            this.addSectionTimer(sectionId, showTimerId);
         });
     }
     
-    // Enhanced countdown with timer tracking
-    showCountdown(callback) {
-        const speedValue = document.getElementById('speedValue');
+    // Enhanced countdown with timer tracking for specific age group
+    showCountdown(ageGroup, speedValue, sectionId, sectionIndex, callback) {
         if (!speedValue) return callback();
         
         let count = 3;
         const countdownInterval = setInterval(() => {
-            // Check if we're still in section 2
-            if (this.currentSection !== 2) {
+            // Check if we're still in the correct section
+            if (this.currentSection !== sectionIndex) {
                 clearInterval(countdownInterval);
                 return;
             }
@@ -1152,31 +1560,31 @@ class ScrollytellingEngine {
             speedValue.style.transform = 'scale(1.3)';
             
             const scaleTimerId = setTimeout(() => {
-                if (this.currentSection === 2) {
+                if (this.currentSection === sectionIndex) {
                     speedValue.style.transform = 'scale(1)';
                 }
             }, 300);
-            this.addSectionTimer('section2', scaleTimerId);
+            this.addSectionTimer(sectionId, scaleTimerId);
             
             count--;
             
             if (count < 0) {
                 clearInterval(countdownInterval);
-                if (this.currentSection === 2) {
+                if (this.currentSection === sectionIndex) {
                     speedValue.textContent = 'GO!';
-                    speedValue.style.color = '#4ecdc4';
+                    speedValue.style.color = this.getAgeGroupColor(ageGroup);
                     const goTimerId = setTimeout(() => {
-                        if (this.currentSection === 2) {
+                        if (this.currentSection === sectionIndex) {
                             speedValue.style.fontSize = '1.8rem';
                             callback();
                         }
                     }, 500);
-                    this.addSectionTimer('section2', goTimerId);
+                    this.addSectionTimer(sectionId, goTimerId);
                 }
             }
         }, 800);
         
-        this.addSectionInterval('section2', countdownInterval);
+        this.addSectionInterval(sectionId, countdownInterval);
     }
     
     // Create visual trail effect
@@ -1201,6 +1609,187 @@ class ScrollytellingEngine {
         setTimeout(() => {
             trail.remove();
         }, 1500);
+    }
+    
+    // Start growth trends animation for chapter 6
+    startGrowthTrendsAnimation() {
+        const youngData = this.generateDataPoints('young');
+        const middleData = this.generateDataPoints('middle');
+        const oldData = this.generateDataPoints('old');
+        
+        // Calculate average speeds
+        const youngAvg = youngData.length > 0 ? youngData.reduce((sum, d) => sum + d.speed, 0) / youngData.length : 1.0;
+        const middleAvg = middleData.length > 0 ? middleData.reduce((sum, d) => sum + d.speed, 0) / middleData.length : 1.2;
+        const oldAvg = oldData.length > 0 ? oldData.reduce((sum, d) => sum + d.speed, 0) / oldData.length : 1.28;
+        
+        // Animate trend visualization
+        setTimeout(() => {
+            if (this.currentSection === 6) { // Check if still in section 6 (hero=0, so section6=6)
+                this.drawTrendLine(youngAvg, middleAvg, oldAvg);
+                this.updateTrendStats(youngAvg, middleAvg, oldAvg);
+            }
+        }, 1000);
+    }
+    
+    // Draw animated trend line
+    drawTrendLine(youngSpeed, middleSpeed, oldSpeed) {
+        const trendLine = document.getElementById('trendLine');
+        const trendPoints = document.getElementById('trendPoints');
+        
+        if (!trendLine || !trendPoints) return;
+        
+        // Clear existing content
+        trendLine.innerHTML = '';
+        trendPoints.innerHTML = '';
+        
+        const maxSpeed = 1.5; // Scale based on expected max speed
+        const containerHeight = 240; // Height minus margins
+        const containerWidth = 240; // Width minus margins
+        
+        // Calculate positions (inverted Y because SVG coordinates)
+        const youngY = containerHeight - (youngSpeed / maxSpeed) * containerHeight;
+        const middleY = containerHeight - (middleSpeed / maxSpeed) * containerHeight;
+        const oldY = containerHeight - (oldSpeed / maxSpeed) * containerHeight;
+        
+        const positions = [
+            { x: 0, y: youngY, speed: youngSpeed, label: 'Young', color: '#4ecdc4' },
+            { x: containerWidth / 2, y: middleY, speed: middleSpeed, label: 'Middle', color: '#45b7d1' },
+            { x: containerWidth, y: oldY, speed: oldSpeed, label: 'Older', color: '#ff6b6b' }
+        ];
+        
+        // Create SVG for trend line
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', '100%');
+        svg.style.position = 'absolute';
+        svg.style.top = '0';
+        svg.style.left = '0';
+        
+        // Create animated line path
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const pathData = `M ${positions[0].x} ${positions[0].y} Q ${positions[1].x} ${positions[1].y} ${positions[2].x} ${positions[2].y}`;
+        path.setAttribute('d', pathData);
+        path.setAttribute('stroke', '#feca57');
+        path.setAttribute('stroke-width', '3');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-dasharray', '500'); // Increased from 300 to 500 for longer line
+        path.setAttribute('stroke-dashoffset', '500'); // Increased from 300 to 500 to match
+        path.style.animation = 'drawLine 2s ease-out forwards';
+        
+        svg.appendChild(path);
+        trendLine.appendChild(svg);
+        
+        // Add trend points with animation
+        positions.forEach((pos, index) => {
+            setTimeout(() => {
+                if (this.currentSection === 6) { // Check if still in section 6 (hero=0, so section6=6)
+                    const point = document.createElement('div');
+                    point.style.position = 'absolute';
+                    point.style.left = `${(pos.x / containerWidth) * 100}%`;
+                    point.style.top = `${(pos.y / containerHeight) * 100}%`;
+                    point.style.width = '12px';
+                    point.style.height = '12px';
+                    point.style.background = pos.color;
+                    point.style.borderRadius = '50%';
+                    point.style.border = '2px solid white';
+                    point.style.transform = 'translate(-50%, -50%)';
+                    point.style.boxShadow = `0 0 15px ${pos.color}`;
+                    point.style.animation = 'pointAppear 0.5s ease-out';
+                    
+                    // Add tooltip
+                    const tooltip = document.createElement('div');
+                    tooltip.textContent = `${pos.label}: ${pos.speed.toFixed(2)} m/s`;
+                    tooltip.style.position = 'absolute';
+                    tooltip.style.bottom = '20px';
+                    tooltip.style.left = '50%';
+                    tooltip.style.transform = 'translateX(-50%)';
+                    tooltip.style.background = 'rgba(0, 0, 0, 0.8)';
+                    tooltip.style.color = 'white';
+                    tooltip.style.padding = '4px 8px';
+                    tooltip.style.borderRadius = '4px';
+                    tooltip.style.fontSize = '0.7rem';
+                    tooltip.style.whiteSpace = 'nowrap';
+                    tooltip.style.opacity = '0';
+                    tooltip.style.transition = 'opacity 0.3s ease';
+                    
+                    point.appendChild(tooltip);
+                    point.addEventListener('mouseenter', () => tooltip.style.opacity = '1');
+                    point.addEventListener('mouseleave', () => tooltip.style.opacity = '0');
+                    
+                    trendPoints.appendChild(point);
+                }
+            }, index * 500 + 2000); // Staggered after line animation
+        });
+        
+        // Add CSS keyframes for animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes drawLine {
+                to { stroke-dashoffset: 0; }
+            }
+            @keyframes pointAppear {
+                from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+                to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Update trend statistics
+    updateTrendStats(youngSpeed, middleSpeed, oldSpeed) {
+        const stats = [
+            { id: 'youngTrendStat', speed: youngSpeed, trend: 'Growing' },
+            { id: 'middleTrendStat', speed: middleSpeed, trend: 'Developing' },
+            { id: 'oldTrendStat', speed: oldSpeed, trend: 'Maturing' }
+        ];
+        
+        stats.forEach((stat, index) => {
+            setTimeout(() => {
+                if (this.currentSection === 6) { // Check if still in section 6 (hero=0, so section6=6)
+                    const element = document.getElementById(stat.id);
+                    if (element) {
+                        element.textContent = `${stat.speed.toFixed(2)} m/s (${stat.trend})`;
+                        element.style.animation = 'statUpdate 0.5s ease-out';
+                    }
+                }
+            }, 3000 + index * 300); // After line and points
+        });
+        
+        // Add stat update animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes statUpdate {
+                from { transform: scale(0.8); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Reset growth trends animation
+    resetGrowthTrendsAnimation() {
+        // Reset trend line
+        const trendLine = document.getElementById('trendLine');
+        if (trendLine) {
+            trendLine.innerHTML = '';
+        }
+        
+        // Reset trend points
+        const trendPoints = document.getElementById('trendPoints');
+        if (trendPoints) {
+            trendPoints.innerHTML = '';
+        }
+        
+        // Reset trend stats
+        const trendStats = ['youngTrendStat', 'middleTrendStat', 'oldTrendStat'];
+        trendStats.forEach(statId => {
+            const statElement = document.getElementById(statId);
+            if (statElement) {
+                statElement.textContent = '-';
+            }
+        });
+        
+        console.log('🔄 Growth trends animation reset');
     }
     
     // EVENT BINDINGS
@@ -1229,29 +1818,6 @@ class ScrollytellingEngine {
                     break;
             }
         });
-        
-        // Age group filter dropdown
-        const ageGroupFilter = document.getElementById('ageGroupFilter');
-        if (ageGroupFilter) {
-            ageGroupFilter.addEventListener('change', (e) => {
-                this.currentAgeGroup = e.target.value;
-                this.updateDataPointsVisualization(this.currentAgeGroup);
-                console.log(`🔄 Age group filter changed to: ${this.currentAgeGroup}`);
-                
-                // If we're currently in section 2 and animation has started, restart with new data
-                if (this.currentSection === 2 && this.section2Animated) {
-                    this.resetNumberLineAnimation();
-                    this.section2Animated = false;
-                    // Restart animation with new data after a short delay
-                    setTimeout(() => {
-                        if (this.currentSection === 2) {
-                            this.section2Animated = true;
-                            this.startNumberLineAnimation();
-                        }
-                    }, 500);
-                }
-            });
-        }
         
         // Kid interactions
         const kidSvg = document.getElementById('kidSvg');

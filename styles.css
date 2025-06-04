@@ -1812,12 +1812,31 @@ body {
 }
 
 .race-kid.racing {
-    animation: raceWalk 0.5s ease-in-out infinite;
+    animation: raceWalk 0.3s ease-in-out infinite;
+    filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.4));
 }
 
 @keyframes raceWalk {
-    0%, 100% { transform: translateY(-50%) scale(1); }
-    50% { transform: translateY(-50%) scale(1.1) rotate(2deg); }
+    0% { 
+        transform: translateY(0px) scale(0.5) rotate(0deg); 
+        filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.4));
+    }
+    25% { 
+        transform: translateY(-2px) scale(0.52) rotate(-1deg); 
+        filter: drop-shadow(0 3px 10px rgba(255, 255, 255, 0.5));
+    }
+    50% { 
+        transform: translateY(-4px) scale(0.55) rotate(0deg); 
+        filter: drop-shadow(0 4px 12px rgba(255, 255, 255, 0.6));
+    }
+    75% { 
+        transform: translateY(-2px) scale(0.52) rotate(1deg); 
+        filter: drop-shadow(0 3px 10px rgba(255, 255, 255, 0.5));
+    }
+    100% { 
+        transform: translateY(0px) scale(0.5) rotate(0deg); 
+        filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.4));
+    }
 }
 
 /* Comparison Insights - Compact */
@@ -2511,202 +2530,304 @@ body {
 }
 
 .stride-visualization-container {
-    display: flex;
-    flex-direction: row;
-    gap: 0.8rem;
-    max-width: 850px;
-    margin: 0.3rem auto;
-    padding: 0.6rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
+    max-width: 1600px; /* Increased from 1400px */
+    margin: 1rem auto; /* Reduced from 2rem auto */
+    padding: 1.5rem; /* Reduced from 2rem */
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem; /* Reduced from 2rem */
+    position: relative;
 }
 
+.stride-visualization-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #4ecdc4, #45b7d1, #ff6b6b);
+    border-radius: 20px 20px 0 0;
+    opacity: 0.8;
+}
+
+/* Enhanced Walker Section Styling */
 .walker-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    padding: 1rem; /* Reduced from 1.5rem */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.walker-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    opacity: 0.6;
+}
+
+.younger-section::before {
+    background: linear-gradient(90deg, transparent, #4ecdc4, transparent);
+}
+
+.older-section::before {
+    background: linear-gradient(90deg, transparent, #ff6b6b, transparent);
 }
 
 .walker-section h3 {
-    color: #ffffff;
-    margin-bottom: 0.2rem;
+    font-size: 1.2rem; /* Reduced from 1.3rem */
+    margin-bottom: 1rem; /* Reduced from 1.5rem */
     text-align: center;
-    font-size: 0.9rem;
     font-weight: 600;
-    letter-spacing: 0.2px;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
 .younger-section h3 {
     color: #4ecdc4;
-    text-shadow: 0 0 15px rgba(76, 205, 196, 0.6);
+    text-shadow: 0 0 15px rgba(76, 205, 196, 0.5);
 }
 
 .older-section h3 {
     color: #ff6b6b;
-    text-shadow: 0 0 15px rgba(255, 107, 107, 0.6);
+    text-shadow: 0 0 15px rgba(255, 107, 107, 0.5);
 }
 
+/* Enhanced Walker Container with Ground */
 .walker-container {
-    background: rgba(255, 255, 255, 0.08);
-    padding: 0.5rem;
-    border-radius: 8px;
-    margin-bottom: 0.4rem;
-    width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.15));
+    border-radius: 12px;
+    padding: 0.8rem; /* Reduced from 1.2rem */
+    margin-bottom: 1rem; /* Reduced from 1.5rem */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    min-height: 140px; /* Reduced from 180px */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     transition: all 0.3s ease;
 }
 
 .walker-container:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     border-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Enhanced Ground Styling */
 .ground {
-    width: 100%;
-    height: 65px;
-    background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
-    position: relative;
-    border-radius: 6px;
-    overflow: hidden;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.kid-svg {
     position: absolute;
-    transform: scale(0.7);
-    transition: transform 0.2s ease-in-out;
-    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.3));
+    bottom: 20px;
+    left: 10%;
+    right: 10%;
+    height: 4px;
+    background: linear-gradient(90deg, 
+        rgba(139, 69, 19, 0.8), 
+        rgba(160, 82, 45, 0.9), 
+        rgba(139, 69, 19, 0.8)
+    );
+    border-radius: 2px;
+    box-shadow: 
+        0 2px 8px rgba(139, 69, 19, 0.4),
+        inset 0 1px 2px rgba(255, 255, 255, 0.2);
 }
 
+.ground::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        rgba(34, 139, 34, 0.6), 
+        rgba(50, 205, 50, 0.8), 
+        rgba(34, 139, 34, 0.6)
+    );
+    border-radius: 1px;
+}
+
+/* Enhanced Kid SVG Styling */
+.kid-svg {
+    width: 100px;
+    height: 120px;
+    position: absolute;
+    bottom: 25px;
+    left: 20%;
+    transform: scale(0.8);
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+.kid-svg:hover {
+    transform: scale(0.85);
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+}
+
+/* Enhanced Stats Grid - Flatter and more compact */
 .stats {
-    background: rgba(255, 255, 255, 0.12);
-    padding: 0.4rem;
-    border-radius: 6px;
-    margin-bottom: 0.4rem;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-bottom: 0.5rem; /* Reduced from 0.8rem */
+    padding: 0.4rem 0.8rem; /* Much more compact padding */
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px; /* Smaller border radius for flatter look */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: auto; /* Ensure minimal height */
 }
 
 .stats p {
-    margin: 0.15rem 0;
+    margin: 0;
+    font-size: 0.7rem; /* Even smaller font */
     display: flex;
     justify-content: space-between;
-    color: #ffffff;
-    font-size: 0.75rem;
-    line-height: 1.1;
+    align-items: center;
+    padding: 0.1rem 0.4rem; /* Minimal padding */
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    flex: 1;
+    min-width: 120px; /* Ensure readable width */
+    white-space: nowrap;
+}
+
+.stats p:last-child {
+    border-right: none;
 }
 
 .stat-label {
+    color: rgba(255, 255, 255, 0.8);
     font-weight: 500;
-    color: #e2e8f0;
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    letter-spacing: 0.2px;
+    font-size: 0.65rem;
 }
 
 .stat-value {
-    font-weight: 700;
-    color: #4ecdc4;
+    color: #feca57;
+    font-weight: 600;
+    text-shadow: 0 0 8px rgba(254, 202, 87, 0.4);
     font-family: 'Courier New', monospace;
-    text-shadow: 0 0 4px rgba(76, 205, 196, 0.4);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
 }
 
+/* Enhanced Controls Styling */
 .controls {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    width: 100%;
+    margin-bottom: 0.6rem; /* Reduced from 1rem */
 }
 
 .controls select {
-    padding: 0.4rem 0.6rem;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.15);
-    color: #ffffff;
-    font-size: 0.75rem;
-    flex-grow: 1;
-    max-width: 160px;
-    font-weight: 500;
+    width: 100%;
+    padding: 0.7rem;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-size: 0.9rem;
+    cursor: pointer;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
 }
 
 .controls select:hover {
-    border-color: rgba(76, 205, 196, 0.5);
-    box-shadow: 0 0 15px rgba(76, 205, 196, 0.2);
+    background: rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.3);
     transform: translateY(-1px);
 }
 
 .controls select:focus {
     outline: none;
     border-color: #4ecdc4;
-    box-shadow: 0 0 20px rgba(76, 205, 196, 0.3);
+    box-shadow: 0 0 15px rgba(76, 205, 196, 0.3);
 }
 
+.controls select option {
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 0.5rem;
+}
+
+/* Enhanced Chart Container - More compact */
 .chart-container {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 0.6rem; /* Reduced from 0.8rem */
     border: 1px solid rgba(255, 255, 255, 0.1);
-    min-height: 180px;
+    position: relative;
 }
 
 .chart-container .stride-variability-plot-container {
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    padding: 0.6rem; /* Reduced from 1rem */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
 }
 
 .chart-container .plot-title {
-    margin-bottom: 0.8rem;
-    text-align: left;
-    font-size: 0.8rem;
+    font-size: 0.8rem; /* Reduced from 0.9rem */
+    color: rgba(255, 255, 255, 0.9);
+    text-align: center;
+    margin-bottom: 0.4rem; /* Reduced from 0.8rem */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .chart-container .small-plot-wrapper {
-    height: 120px;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    height: 140px; /* Reduced from 160px */
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Enhanced Main Controls */
 .main-controls {
+    grid-column: 1 / -1;
     text-align: center;
-    margin: 0.4rem 0;
-    padding: 0.2rem 0;
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .main-controls button {
-    padding: 0.4rem 0.8rem;
-    background: linear-gradient(45deg, #4ecdc4, #45b7d1);
-    color: white;
+    background: linear-gradient(135deg, #4ecdc4, #45b7d1);
     border: none;
-    border-radius: 5px;
-    font-size: 0.75rem;
+    color: white;
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
     font-weight: 600;
+    border-radius: 25px;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 6px rgba(76, 205, 196, 0.3);
-    text-transform: uppercase;
-    letter-spacing: 0.2px;
     position: relative;
     overflow: hidden;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(76, 205, 196, 0.4);
+}
+
+.main-controls .variability-btn {
+    background: linear-gradient(135deg, #ff6b6b, #feca57);
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    padding: 0.8rem 1.8rem;
+    font-size: 0.95rem;
+}
+
+.main-controls .variability-btn:hover {
+    background: linear-gradient(135deg, #ff5252, #ffca28);
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.6);
 }
 
 .main-controls button::before {
@@ -2717,7 +2838,7 @@ body {
     width: 100%;
     height: 100%;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
+    transition: left 0.5s ease;
 }
 
 .main-controls button:hover::before {
@@ -2725,81 +2846,141 @@ body {
 }
 
 .main-controls button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(76, 205, 196, 0.5);
-    background: linear-gradient(45deg, #5dd3cb, #5cc3d8);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(76, 205, 196, 0.6);
+    background: linear-gradient(135deg, #5dd5d0, #4fc3f7);
 }
 
-/* STRIDE VARIABILITY SMALL PLOTS */
+.main-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(76, 205, 196, 0.2);
+}
+
+/* Enhanced Plot Containers for Different Walkers */
 .stride-variability-plot-container {
-    margin-top: 0.8rem;
-    padding: 0.6rem;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 10px;
+    padding: 0.6rem; /* Reduced from 1rem */
+    margin: 0.5rem 0; /* Reduced from 0.8rem */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
 }
 
 .plot-title {
-    color: #ffffff;
-    font-size: 0.7rem;
-    font-weight: 500;
-    margin: 0 0 0.4rem 0;
+    font-size: 0.9rem; /* Slightly reduced */
+    color: rgba(255, 255, 255, 0.9);
     text-align: center;
-    opacity: 0.8;
-    letter-spacing: 0.3px;
+    margin-bottom: 0.6rem; /* Reduced from 1rem */
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .small-plot-wrapper {
-    width: 100%;
-    height: 80px;
+    height: 140px; /* Reduced from 180px for consistency */
     position: relative;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
     overflow: hidden;
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .small-plot-wrapper canvas {
+    border-radius: 8px;
     width: 100% !important;
     height: 100% !important;
-    display: block;
 }
 
-/* Color coding for younger vs older plots */
+/* Walker-Specific Color Schemes */
 .younger-section .stride-variability-plot-container {
-    border-color: rgba(76, 205, 196, 0.15);
-    box-shadow: 0 0 8px rgba(76, 205, 196, 0.08);
+    border-color: rgba(76, 205, 196, 0.3);
+    background: rgba(76, 205, 196, 0.05);
 }
 
 .older-section .stride-variability-plot-container {
-    border-color: rgba(255, 107, 107, 0.15);
-    box-shadow: 0 0 8px rgba(255, 107, 107, 0.08);
+    border-color: rgba(255, 107, 107, 0.3);
+    background: rgba(255, 107, 107, 0.05);
 }
 
 .younger-section .plot-title {
     color: #4ecdc4;
-    text-shadow: 0 0 8px rgba(76, 205, 196, 0.3);
+    text-shadow: 0 0 10px rgba(76, 205, 196, 0.4);
 }
 
 .older-section .plot-title {
     color: #ff6b6b;
-    text-shadow: 0 0 8px rgba(255, 107, 107, 0.3);
+    text-shadow: 0 0 10px rgba(255, 107, 107, 0.4);
 }
 
-/* Responsive design for small plots */
+/* Responsive Design for Stride Visualization */
+@media (max-width: 1200px) {
+    .stride-visualization-container {
+        max-width: 1200px; /* Updated to accommodate larger screen containers */
+        padding: 1.5rem;
+        gap: 1.5rem;
+    }
+    
+    .walker-section h3 {
+        font-size: 1.2rem;
+    }
+    
+    .main-controls button {
+        padding: 0.9rem 2rem;
+        font-size: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
-    .stride-variability-plot-container {
-        margin-top: 0.6rem;
+    .stride-visualization-container {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        gap: 1rem;
+        margin: 1rem;
+    }
+    
+    .walker-container {
+        min-height: 160px;
+        padding: 1rem;
+    }
+    
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); /* Switch back to grid for mobile */
+        gap: 0.3rem;
         padding: 0.4rem;
+        margin-bottom: 0.4rem;
+    }
+    
+    .stats p {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 0.2rem 0.4rem;
+        min-width: auto;
+    }
+    
+    .stats p:last-child,
+    .stats p:nth-last-child(2) {
+        border-bottom: none;
     }
     
     .small-plot-wrapper {
-        height: 60px;
+        height: 120px; /* Even more compact on mobile */
+    }
+    
+    .main-controls button {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .kid-svg {
+        transform: scale(0.7);
+        left: 15%;
     }
     
     .plot-title {
-        font-size: 0.65rem;
-        margin-bottom: 0.3rem;
+        font-size: 0.8rem; /* Smaller on mobile */
     }
 }
 

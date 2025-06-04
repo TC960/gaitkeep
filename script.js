@@ -36,6 +36,10 @@ class ScrollytellingEngine {
         this.sectionTimers = {}; // Track timers for each section
         this.activeIntervals = {}; // Track active intervals
         
+        // Preloading State Management
+        this.preloadedSections = new Set(); // Track which sections have been preloaded
+        this.preloadingQueue = []; // Queue for sections being preloaded
+        
         // Gait Data Management
         this.gaitData = [];
         this.currentAgeGroup = 'all';
@@ -48,8 +52,13 @@ class ScrollytellingEngine {
         this.createProgressIndicator();
         this.createNavigationDots();
         this.loadGaitData();
-        this.bindEvents();
         this.startMagneticScrollDetection();
+        
+        // PRELOADING ENHANCEMENT: Preload the first section's data immediately after initialization
+        setTimeout(() => {
+            this.preloadNextSection(-1); // Preload section 0 (first section after hero)
+            console.log('🚀 Initial preloading completed - Ready for immediate data loading!');
+        }, 500); // Give time for data loading to complete
         
         console.log('🧲 Magnetic Scrollytelling Engine initialized!');
     }
@@ -225,6 +234,232 @@ class ScrollytellingEngine {
         console.log(`📊 Updated visualization for ${ageGroup} group:`, dataPoints.length, 'points');
     }
     
+    // PRELOADING SYSTEM FOR IMMEDIATE DATA LOADING
+    
+    // Preload data and prepare animations for the next section
+    preloadNextSection(currentSectionIndex) {
+        const nextSectionIndex = currentSectionIndex + 1;
+        if (nextSectionIndex >= this.sections.length) return; // No next section
+        
+        const nextSection = this.sections[nextSectionIndex];
+        if (!nextSection || this.preloadedSections.has(nextSection.id)) return; // Already preloaded
+        
+        console.log(`🔄 Preloading data for next section: ${nextSection.id}`);
+        
+        // Add to preloading queue
+        this.preloadingQueue.push(nextSection.id);
+        
+        // Preload based on section type
+        switch(nextSection.id) {
+            case 'section2':
+                this.preloadNumberLineData('young');
+                break;
+            case 'section3':
+                this.preloadNumberLineData('middle');
+                break;
+            case 'section4':
+                this.preloadNumberLineData('old');
+                break;
+            case 'section5':
+                this.preloadComparisonData();
+                break;
+            case 'section6':
+                this.preloadGrowthTrendsData();
+                break;
+            case 'section7':
+                this.preloadGaitVisualizationData();
+                break;
+        }
+        
+        // Mark as preloaded
+        this.preloadedSections.add(nextSection.id);
+        
+        // Remove from queue
+        const queueIndex = this.preloadingQueue.indexOf(nextSection.id);
+        if (queueIndex > -1) {
+            this.preloadingQueue.splice(queueIndex, 1);
+        }
+        
+        console.log(`✅ Preloaded section: ${nextSection.id}`);
+    }
+    
+    // Preload number line animation data for specific age group
+    preloadNumberLineData(ageGroup) {
+        // Generate and cache data points
+        const dataPoints = this.generateDataPoints(ageGroup);
+        
+        // Pre-calculate animation sequences
+        const speeds = [0, ...dataPoints.map(d => d.speed)];
+        const positions = [0, ...dataPoints.map(d => Math.min(Math.max(d.position, 10), 90))];
+        
+        // Cache the preloaded data
+        this[`${ageGroup}PreloadedData`] = {
+            dataPoints,
+            speeds,
+            positions,
+            timestamp: Date.now()
+        };
+        
+        // Pre-update visualization containers
+        const containerId = ageGroup === 'young' ? 'dataPointsContainer' : 
+                           ageGroup === 'middle' ? 'dataPointsContainerMiddle' : 
+                           'dataPointsContainerOld';
+        
+        this.updateDataPointsVisualization(ageGroup, containerId);
+        
+        console.log(`📊 Preloaded ${ageGroup} age group data:`, dataPoints.length, 'points');
+    }
+    
+    // Preload comparison animation data
+    preloadComparisonData() {
+        const youngData = this.generateDataPoints('young');
+        const middleData = this.generateDataPoints('middle');
+        const oldData = this.generateDataPoints('old');
+        
+        // Calculate average speeds
+        const youngAvg = youngData.length > 0 ? youngData.reduce((sum, d) => sum + d.speed, 0) / youngData.length : 0;
+        const middleAvg = middleData.length > 0 ? middleData.reduce((sum, d) => sum + d.speed, 0) / middleData.length : 0;
+        const oldAvg = oldData.length > 0 ? oldData.reduce((sum, d) => sum + d.speed, 0) / oldData.length : 0;
+        
+        // Cache preloaded comparison data
+        this.comparisonPreloadedData = {
+            youngAvg,
+            middleAvg,
+            oldAvg,
+            maxSpeed: Math.max(youngAvg, middleAvg, oldAvg),
+            timestamp: Date.now()
+        };
+        
+        console.log('📊 Preloaded comparison data:', { youngAvg, middleAvg, oldAvg });
+    }
+    
+    // Preload growth trends data
+    preloadGrowthTrendsData() {
+        const youngData = this.generateDataPoints('young');
+        const middleData = this.generateDataPoints('middle');
+        const oldData = this.generateDataPoints('old');
+        
+        // Calculate average speeds
+        const youngAvg = youngData.length > 0 ? youngData.reduce((sum, d) => sum + d.speed, 0) / youngData.length : 1.0;
+        const middleAvg = middleData.length > 0 ? middleData.reduce((sum, d) => sum + d.speed, 0) / middleData.length : 1.2;
+        const oldAvg = oldData.length > 0 ? oldData.reduce((sum, d) => sum + d.speed, 0) / oldData.length : 1.28;
+        
+        // Cache preloaded growth trends data
+        this.growthTrendsPreloadedData = {
+            youngAvg,
+            middleAvg,
+            oldAvg,
+            positions: this.calculateTrendPositions(youngAvg, middleAvg, oldAvg),
+            timestamp: Date.now()
+        };
+        
+        console.log('📊 Preloaded growth trends data:', { youngAvg, middleAvg, oldAvg });
+    }
+    
+    // Calculate trend line positions for preloading
+    calculateTrendPositions(youngSpeed, middleSpeed, oldSpeed) {
+        const maxSpeed = 1.5; // Scale based on expected max speed
+        const containerHeight = 240; // Height minus margins
+        const containerWidth = 240; // Width minus margins
+        
+        // Calculate positions (inverted Y because SVG coordinates)
+        const youngY = containerHeight - (youngSpeed / maxSpeed) * containerHeight;
+        const middleY = containerHeight - (middleSpeed / maxSpeed) * containerHeight;
+        const oldY = containerHeight - (oldSpeed / maxSpeed) * containerHeight;
+        
+        return [
+            { x: 0, y: youngY, speed: youngSpeed, label: 'Young', color: '#4ecdc4' },
+            { x: containerWidth / 2, y: middleY, speed: middleSpeed, label: 'Middle', color: '#45b7d1' },
+            { x: containerWidth, y: oldY, speed: oldSpeed, label: 'Older', color: '#ff6b6b' }
+        ];
+    }
+    
+    // Preload gait visualization data (for section 7)
+    preloadGaitVisualizationData() {
+        // This section uses the same CSV data that's already loaded
+        // Just mark it as ready for immediate initialization
+        this.gaitVisualizationPreloadedData = {
+            ready: true,
+            timestamp: Date.now(),
+            // Pre-calculate commonly used data for immediate access
+            totalRecords: this.gaitData.length,
+            ageGroups: [...new Set(this.gaitData.map(d => d.group))],
+            ageRange: {
+                min: Math.min(...this.gaitData.map(d => d.age)),
+                max: Math.max(...this.gaitData.map(d => d.age))
+            },
+            speedRange: {
+                min: Math.min(...this.gaitData.map(d => d.speed)),
+                max: Math.max(...this.gaitData.map(d => d.speed))
+            },
+            // Pre-process age-speed mapping for immediate chart rendering
+            ageSpeedMap: this.preprocessAgeSpeedData()
+        };
+        
+        console.log('📊 Preloaded gait visualization data with processed chart data');
+    }
+    
+    // Preprocess age-speed data for immediate chart rendering
+    preprocessAgeSpeedData() {
+        // Safety check for gait data availability
+        if (!this.gaitData || this.gaitData.length === 0) {
+            console.warn('⚠️ Gait data not available for preprocessing');
+            return { labels: [], speeds: [], ageMap: {} };
+        }
+        
+        const ageMap = {};
+        this.gaitData.forEach(d => {
+            if (!ageMap[d.age]) ageMap[d.age] = [];
+            ageMap[d.age].push(d);
+        });
+        
+        const labels = Object.keys(ageMap).map(a => +a).sort((a, b) => a - b);
+        const speeds = labels.map(a => {
+            const entries = ageMap[a];
+            return entries.reduce((sum, e) => sum + e.speed, 0) / entries.length;
+        });
+        
+        return { labels, speeds, ageMap };
+    }
+    
+    // Check if section data is preloaded and ready
+    isSectionPreloaded(sectionId) {
+        return this.preloadedSections.has(sectionId);
+    }
+    
+    // Clear old preloaded data to prevent memory leaks
+    clearOldPreloadedData() {
+        const currentTime = Date.now();
+        const maxAge = 60000; // 1 minute
+        
+        // Clear age group data
+        ['young', 'middle', 'old'].forEach(ageGroup => {
+            const dataKey = `${ageGroup}PreloadedData`;
+            if (this[dataKey] && currentTime - this[dataKey].timestamp > maxAge) {
+                delete this[dataKey];
+                console.log(`🗑️ Cleared old preloaded data for ${ageGroup} age group`);
+            }
+        });
+        
+        // Clear comparison data
+        if (this.comparisonPreloadedData && currentTime - this.comparisonPreloadedData.timestamp > maxAge) {
+            delete this.comparisonPreloadedData;
+            console.log('🗑️ Cleared old preloaded comparison data');
+        }
+        
+        // Clear growth trends data
+        if (this.growthTrendsPreloadedData && currentTime - this.growthTrendsPreloadedData.timestamp > maxAge) {
+            delete this.growthTrendsPreloadedData;
+            console.log('🗑️ Cleared old preloaded growth trends data');
+        }
+        
+        // Clear gait visualization data
+        if (this.gaitVisualizationPreloadedData && currentTime - this.gaitVisualizationPreloadedData.timestamp > maxAge) {
+            delete this.gaitVisualizationPreloadedData;
+            console.log('🗑️ Cleared old preloaded gait visualization data');
+        }
+    }
+    
     // Enhanced Scroll Intent Detection
     startMagneticScrollDetection() {
         let animationFrame = null;
@@ -384,7 +619,8 @@ class ScrollytellingEngine {
                         this.section2Animated = true;
                         setTimeout(() => {
                             if (this.currentSection === 2) {
-                                this.startNumberLineAnimation('young');
+                                this.startStrideWalkerAnimation();
+                                console.log('✨ Section 2 stride walker animation started');
                             }
                         }, 100);
                     }
@@ -395,7 +631,8 @@ class ScrollytellingEngine {
                         this.section3Animated = true;
                         setTimeout(() => {
                             if (this.currentSection === 3) {
-                                this.startNumberLineAnimation('middle');
+                                this.startComparisonRaceAnimation();
+                                console.log('✨ Section 3 comparison race animation started');
                             }
                         }, 100);
                     }
@@ -406,7 +643,8 @@ class ScrollytellingEngine {
                         this.section4Animated = true;
                         setTimeout(() => {
                             if (this.currentSection === 4) {
-                                this.startNumberLineAnimation('old');
+                                this.startIndividualWalkerAnimation();
+                                console.log('✨ Section 4 individual walker animation started');
                             }
                         }, 100);
                     }
@@ -418,6 +656,7 @@ class ScrollytellingEngine {
                         setTimeout(() => {
                             if (this.currentSection === 5) {
                                 this.startComparisonAnimation();
+                                console.log('✨ Section 5 comparison animation started');
                             }
                         }, 100);
                     }
@@ -429,6 +668,19 @@ class ScrollytellingEngine {
                         setTimeout(() => {
                             if (this.currentSection === 6) {
                                 this.startGrowthTrendsAnimation();
+                                console.log('✨ Section 6 growth trends animation started');
+                            }
+                        }, 100);
+                    }
+                    break;
+                    
+                case 'section7':
+                    if (!this.section7Animated) {
+                        this.section7Animated = true;
+                        setTimeout(() => {
+                            if (this.currentSection === 7) {
+                                this.startGaitVisualizationAnimation();
+                                console.log('✨ Section 7 gait visualization animation started');
                             }
                         }, 100);
                     }
@@ -706,8 +958,16 @@ class ScrollytellingEngine {
                 
                 console.log(`📍 Section changed to: ${this.sections[newSectionIndex].id}`);
                 
+                // PRELOADING INTEGRATION: Preload next section's data immediately
+                this.preloadNextSection(newSectionIndex);
+                
                 // Trigger animations exactly 100ms after section becomes fully visible
                 this.scheduleAnimationTrigger(newSectionIndex);
+                
+                // Clean up old preloaded data periodically
+                if (Math.random() < 0.1) { // 10% chance to clean up on section change
+                    this.clearOldPreloadedData();
+                }
             }
         }
         
@@ -766,8 +1026,8 @@ class ScrollytellingEngine {
                 if (!this.section2Animated) {
                     this.section2Animated = true;
                     if (this.currentSection === sectionIndex) {
-                        this.startNumberLineAnimation('young');
-                        console.log('✨ Section 2 young animation started');
+                        this.startStrideWalkerAnimation();
+                        console.log('✨ Section 2 stride walker animation started');
                     }
                 }
                 break;
@@ -776,8 +1036,8 @@ class ScrollytellingEngine {
                 if (!this.section3Animated) {
                     this.section3Animated = true;
                     if (this.currentSection === sectionIndex) {
-                        this.startNumberLineAnimation('middle');
-                        console.log('✨ Section 3 middle animation started');
+                        this.startComparisonRaceAnimation();
+                        console.log('✨ Section 3 comparison race animation started');
                     }
                 }
                 break;
@@ -786,8 +1046,8 @@ class ScrollytellingEngine {
                 if (!this.section4Animated) {
                     this.section4Animated = true;
                     if (this.currentSection === sectionIndex) {
-                        this.startNumberLineAnimation('old');
-                        console.log('✨ Section 4 old animation started');
+                        this.startIndividualWalkerAnimation();
+                        console.log('✨ Section 4 individual walker animation started');
                     }
                 }
                 break;
@@ -808,6 +1068,16 @@ class ScrollytellingEngine {
                     if (this.currentSection === sectionIndex) {
                         this.startGrowthTrendsAnimation();
                         console.log('✨ Section 6 growth trends animation started');
+                    }
+                }
+                break;
+                
+            case 'section7':
+                if (!this.section7Animated) {
+                    this.section7Animated = true;
+                    if (this.currentSection === sectionIndex) {
+                        this.startGaitVisualizationAnimation();
+                        console.log('✨ Section 7 gait visualization animation started');
                     }
                 }
                 break;
@@ -835,21 +1105,21 @@ class ScrollytellingEngine {
                 break;
                 
             case 'section2':
-                // Reset Chapter 2 - Young children animation
+                // Reset Chapter 2 - Stride walker animation
                 this.section2Animated = false;
-                this.resetNumberLineAnimation('young');
+                this.resetStrideWalkerAnimation();
                 break;
                 
             case 'section3':
-                // Reset Chapter 3 - Middle children animation
+                // Reset Chapter 3 - Comparison race animation
                 this.section3Animated = false;
-                this.resetNumberLineAnimation('middle');
+                this.resetComparisonRaceAnimation();
                 break;
                 
             case 'section4':
-                // Reset Chapter 4 - Old children animation
+                // Reset Chapter 4 - Individual walker animation
                 this.section4Animated = false;
-                this.resetNumberLineAnimation('old');
+                this.resetIndividualWalkerAnimation();
                 break;
                 
             case 'section5':
@@ -867,6 +1137,20 @@ class ScrollytellingEngine {
             case 'section7':
                 // Reset Chapter 7 - Gait visualization (previously section 6)
                 this.section7Animated = false;
+                // Reset any chart-related elements
+                const gaitChart = document.getElementById('gaitSpeedChart');
+                if (gaitChart && window.gaitChart) {
+                    window.gaitChart.destroy();
+                    window.gaitChart = null;
+                }
+                // Reset gait stats
+                const gaitStats = ['gaitAgeStat', 'gaitSpeedStat', 'gaitLegLengthStat'];
+                gaitStats.forEach(statId => {
+                    const statElement = document.getElementById(statId);
+                    if (statElement) {
+                        statElement.textContent = '-';
+                    }
+                });
                 break;
                 
             case 'finale':
@@ -1338,8 +1622,26 @@ class ScrollytellingEngine {
         
         if (!numberlineKid || !speedValue) return;
         
-        // Get filtered data points for current age group
-        const dataPoints = this.generateDataPoints(ageGroup);
+        // Check if we have preloaded data for immediate animation
+        const preloadedDataKey = `${ageGroup}PreloadedData`;
+        let dataPoints, speeds, positions;
+        
+        if (this[preloadedDataKey]) {
+            // Use preloaded data for immediate start
+            console.log(`⚡ Using preloaded data for ${ageGroup} animation - IMMEDIATE START!`);
+            dataPoints = this[preloadedDataKey].dataPoints;
+            speeds = this[preloadedDataKey].speeds;
+            positions = this[preloadedDataKey].positions;
+        } else {
+            // Generate data on-demand (fallback)
+            console.log(`🔄 Generating data on-demand for ${ageGroup} animation`);
+            dataPoints = this.generateDataPoints(ageGroup);
+            speeds = [0, ...dataPoints.map(d => d.speed)];
+            positions = [0, ...dataPoints.map(d => Math.min(Math.max(d.position, 10), 90))];
+            
+            // Update visualization if not already done
+            this.updateDataPointsVisualization(ageGroup, containerId);
+        }
         
         if (dataPoints.length === 0) {
             console.log(`⚠️ No data points available for ${ageGroup} animation`);
@@ -1347,10 +1649,7 @@ class ScrollytellingEngine {
         }
         
         // Create animation sequence from data
-        const speeds = [0, ...dataPoints.map(d => d.speed)];
-        const positions = [0, ...dataPoints.map(d => Math.min(Math.max(d.position, 10), 90))];
         let currentStep = 0;
-        
         const sectionIndex = this.sections.findIndex(s => s.id === sectionId);
         
         const animateStep = () => {
@@ -1429,14 +1728,22 @@ class ScrollytellingEngine {
             }
         };
         
-        // Initialize data points visualization
-        this.updateDataPointsVisualization(ageGroup, containerId);
-        
-        // Start animation with a dramatic countdown
-        this.showCountdown(ageGroup, speedValue, sectionId, sectionIndex, () => {
-            const startTimerId = setTimeout(animateStep, 500);
-            this.addSectionTimer(sectionId, startTimerId);
-        });
+        // Start animation - immediately if preloaded, with countdown if not
+        if (this[preloadedDataKey]) {
+            // IMMEDIATE START - data is preloaded
+            const immediateStartTimerId = setTimeout(animateStep, 200); // Minimal delay for smooth transition
+            this.addSectionTimer(sectionId, immediateStartTimerId);
+            
+            // Update speed display immediately
+            speedValue.textContent = 'Ready!';
+            speedValue.style.color = this.getAgeGroupColor(ageGroup);
+        } else {
+            // Traditional countdown for non-preloaded data
+            this.showCountdown(ageGroup, speedValue, sectionId, sectionIndex, () => {
+                const startTimerId = setTimeout(animateStep, 500);
+                this.addSectionTimer(sectionId, startTimerId);
+            });
+        }
     }
     
     // Get color scheme for age groups
@@ -1451,24 +1758,39 @@ class ScrollytellingEngine {
     
     // Start comparison animation for chapter 5
     startComparisonAnimation() {
-        const youngData = this.generateDataPoints('young');
-        const middleData = this.generateDataPoints('middle');
-        const oldData = this.generateDataPoints('old');
-        
-        // Calculate average speeds
-        const youngAvg = youngData.length > 0 ? youngData.reduce((sum, d) => sum + d.speed, 0) / youngData.length : 0;
-        const middleAvg = middleData.length > 0 ? middleData.reduce((sum, d) => sum + d.speed, 0) / middleData.length : 0;
-        const oldAvg = oldData.length > 0 ? oldData.reduce((sum, d) => sum + d.speed, 0) / oldData.length : 0;
-        
-        // Update comparison displays
-        setTimeout(() => {
-            if (this.currentSection === 5) {
-                this.updateComparisonDisplay('young', youngAvg);
-                this.updateComparisonDisplay('middle', middleAvg);
-                this.updateComparisonDisplay('old', oldAvg);
-                this.startRaceAnimation(youngAvg, middleAvg, oldAvg);
-            }
-        }, 1000);
+        // Check if we have preloaded comparison data
+        if (this.comparisonPreloadedData) {
+            // Use preloaded data for immediate start
+            console.log('⚡ Using preloaded comparison data - IMMEDIATE START!');
+            const { youngAvg, middleAvg, oldAvg } = this.comparisonPreloadedData;
+            
+            // Update comparison displays immediately
+            this.updateComparisonDisplay('young', youngAvg);
+            this.updateComparisonDisplay('middle', middleAvg);
+            this.updateComparisonDisplay('old', oldAvg);
+            this.startRaceAnimation(youngAvg, middleAvg, oldAvg);
+        } else {
+            // Generate data on-demand (fallback)
+            console.log('🔄 Generating comparison data on-demand');
+            const youngData = this.generateDataPoints('young');
+            const middleData = this.generateDataPoints('middle');
+            const oldData = this.generateDataPoints('old');
+            
+            // Calculate average speeds
+            const youngAvg = youngData.length > 0 ? youngData.reduce((sum, d) => sum + d.speed, 0) / youngData.length : 0;
+            const middleAvg = middleData.length > 0 ? middleData.reduce((sum, d) => sum + d.speed, 0) / middleData.length : 0;
+            const oldAvg = oldData.length > 0 ? oldData.reduce((sum, d) => sum + d.speed, 0) / oldData.length : 0;
+            
+            // Update comparison displays with traditional delay
+            setTimeout(() => {
+                if (this.currentSection === 5) {
+                    this.updateComparisonDisplay('young', youngAvg);
+                    this.updateComparisonDisplay('middle', middleAvg);
+                    this.updateComparisonDisplay('old', oldAvg);
+                    this.startRaceAnimation(youngAvg, middleAvg, oldAvg);
+                }
+            }, 1000);
+        }
     }
     
     // Update comparison display for specific age group
@@ -1613,22 +1935,35 @@ class ScrollytellingEngine {
     
     // Start growth trends animation for chapter 6
     startGrowthTrendsAnimation() {
-        const youngData = this.generateDataPoints('young');
-        const middleData = this.generateDataPoints('middle');
-        const oldData = this.generateDataPoints('old');
-        
-        // Calculate average speeds
-        const youngAvg = youngData.length > 0 ? youngData.reduce((sum, d) => sum + d.speed, 0) / youngData.length : 1.0;
-        const middleAvg = middleData.length > 0 ? middleData.reduce((sum, d) => sum + d.speed, 0) / middleData.length : 1.2;
-        const oldAvg = oldData.length > 0 ? oldData.reduce((sum, d) => sum + d.speed, 0) / oldData.length : 1.28;
-        
-        // Animate trend visualization
-        setTimeout(() => {
-            if (this.currentSection === 6) { // Check if still in section 6 (hero=0, so section6=6)
-                this.drawTrendLine(youngAvg, middleAvg, oldAvg);
-                this.updateTrendStats(youngAvg, middleAvg, oldAvg);
-            }
-        }, 1000);
+        // Check if we have preloaded growth trends data
+        if (this.growthTrendsPreloadedData) {
+            // Use preloaded data for immediate start
+            console.log('⚡ Using preloaded growth trends data - IMMEDIATE START!');
+            const { youngAvg, middleAvg, oldAvg } = this.growthTrendsPreloadedData;
+            
+            // Animate trend visualization immediately
+            this.drawTrendLine(youngAvg, middleAvg, oldAvg);
+            this.updateTrendStats(youngAvg, middleAvg, oldAvg);
+        } else {
+            // Generate data on-demand (fallback)
+            console.log('🔄 Generating growth trends data on-demand');
+            const youngData = this.generateDataPoints('young');
+            const middleData = this.generateDataPoints('middle');
+            const oldData = this.generateDataPoints('old');
+            
+            // Calculate average speeds
+            const youngAvg = youngData.length > 0 ? youngData.reduce((sum, d) => sum + d.speed, 0) / youngData.length : 1.0;
+            const middleAvg = middleData.length > 0 ? middleData.reduce((sum, d) => sum + d.speed, 0) / middleData.length : 1.2;
+            const oldAvg = oldData.length > 0 ? oldData.reduce((sum, d) => sum + d.speed, 0) / oldData.length : 1.28;
+            
+            // Animate trend visualization with traditional delay
+            setTimeout(() => {
+                if (this.currentSection === 6) { // Check if still in section 6 (hero=0, so section6=6)
+                    this.drawTrendLine(youngAvg, middleAvg, oldAvg);
+                    this.updateTrendStats(youngAvg, middleAvg, oldAvg);
+                }
+            }, 1000);
+        }
     }
     
     // Draw animated trend line
@@ -1762,6 +2097,10 @@ class ScrollytellingEngine {
                 from { transform: scale(0.8); opacity: 0; }
                 to { transform: scale(1); opacity: 1; }
             }
+            @keyframes chartAppear {
+                from { transform: scale(0.9); opacity: 0; filter: blur(5px); }
+                to { transform: scale(1); opacity: 1; filter: blur(0px); }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -1792,21 +2131,1520 @@ class ScrollytellingEngine {
         console.log('🔄 Growth trends animation reset');
     }
     
-    // EVENT BINDINGS
+    // Start gait visualization animation for chapter 7
+    startGaitVisualizationAnimation() {
+        // Check if we have preloaded gait visualization data
+        if (this.gaitVisualizationPreloadedData && this.gaitVisualizationPreloadedData.ready) {
+            // Use preloaded data for immediate start
+            console.log('⚡ Using preloaded gait visualization data - IMMEDIATE START!');
+            
+            // Initialize the gait visualization immediately with preloaded data
+            this.initializeGaitVisualizationImmediate();
+            
+            // Trigger initial chart render with preloaded data
+            setTimeout(() => {
+                if (this.currentSection === 7) {
+                    this.renderGaitChartImmediate();
+                }
+            }, 200); // Minimal delay for DOM readiness
+            
+        } else {
+            // Generate data on-demand (fallback)
+            console.log('🔄 Initializing gait visualization on-demand');
+            
+            // Traditional initialization with delay
+            setTimeout(() => {
+                if (this.currentSection === 7) {
+                    this.initializeGaitVisualizationFallback();
+                }
+            }, 1000);
+        }
+    }
+    
+    // Initialize gait visualization immediately using preloaded data
+    initializeGaitVisualizationImmediate() {
+        const preloadedData = this.gaitVisualizationPreloadedData;
+        
+        // Set default values immediately using preloaded ranges
+        const ageSlider = document.getElementById("gaitAgeSlider");
+        const speedSlider = document.getElementById("gaitSpeedSlider");
+        const legSlider = document.getElementById("gaitLegSlider");
+        
+        if (ageSlider) {
+            ageSlider.min = preloadedData.ageRange.min;
+            ageSlider.max = preloadedData.ageRange.max;
+            ageSlider.value = Math.round((preloadedData.ageRange.min + preloadedData.ageRange.max) / 2);
+        }
+        
+        if (speedSlider) {
+            speedSlider.min = preloadedData.speedRange.min.toFixed(1);
+            speedSlider.max = preloadedData.speedRange.max.toFixed(1);
+            speedSlider.value = preloadedData.speedRange.min.toFixed(1);
+        }
+        
+        // Update stats immediately with preloaded data
+        this.updateGaitStatsImmediate(parseInt(ageSlider?.value || preloadedData.ageRange.min));
+        
+        console.log('⚡ Gait visualization initialized immediately with preloaded data');
+    }
+    
+    // Render gait chart immediately using preloaded data
+    renderGaitChartImmediate() {
+        const chartCanvas = document.getElementById("gaitSpeedChart");
+        if (!chartCanvas) return;
+        
+        const preloadedData = this.gaitVisualizationPreloadedData;
+        const { labels, speeds } = preloadedData.ageSpeedMap;
+        
+        // Clear any existing chart
+        if (window.gaitChart) {
+            window.gaitChart.destroy();
+        }
+        
+        // Create chart immediately with preloaded data
+        window.gaitChart = new Chart(chartCanvas, {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Avg Speed (m/s)",
+                    data: speeds,
+                    borderColor: "#FF6B6B",
+                    backgroundColor: "rgba(255, 107, 107, 0.1)",
+                    fill: false,
+                    tension: 0.2,
+                    pointBackgroundColor: "#FF6B6B",
+                    pointRadius: 3,
+                    pointHoverRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000,
+                    easing: 'easeInOutQuart'
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Age (months)",
+                            color: "#333",
+                            font: { size: 14, weight: 'bold' }
+                        },
+                        grid: { color: "rgba(0,0,0,0.1)" }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Speed (m/s)",
+                            color: "#333",
+                            font: { size: 14, weight: 'bold' }
+                        },
+                        grid: { color: "rgba(0,0,0,0.1)" }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: { color: "#333", font: { size: 12 } }
+                    }
+                }
+            }
+        });
+        
+        console.log('📊 Gait chart rendered immediately with preloaded data');
+        
+        // Trigger entry animation
+        setTimeout(() => {
+            if (this.currentSection === 7) {
+                chartCanvas.style.animation = 'chartAppear 0.8s ease-out';
+            }
+        }, 100);
+    }
+    
+    // Update gait stats immediately using preloaded data
+    updateGaitStatsImmediate(selectedAge) {
+        const preloadedData = this.gaitVisualizationPreloadedData;
+        const { ageMap } = preloadedData.ageSpeedMap;
+        
+        let stats = ageMap[selectedAge] || [];
+        
+        // If no data at this age, find closest age
+        if (stats.length === 0) {
+            const availableAges = Object.keys(ageMap).map(a => +a).sort((a, b) => Math.abs(a - selectedAge) - Math.abs(b - selectedAge));
+            if (availableAges.length > 0) {
+                selectedAge = availableAges[0];
+                stats = ageMap[selectedAge] || [];
+            }
+        }
+        
+        const ageStat = document.getElementById("gaitAgeStat");
+        const speedStat = document.getElementById("gaitSpeedStat");
+        const legStat = document.getElementById("gaitLegLengthStat");
+        
+        if (stats.length > 0) {
+            const avgSpeed = stats.reduce((sum, d) => sum + d.speed, 0) / stats.length;
+            const avgLeg = stats.reduce((sum, d) => sum + d.legLength, 0) / stats.length;
+            
+            if (ageStat) ageStat.textContent = `${selectedAge} months`;
+            if (speedStat) speedStat.textContent = `${avgSpeed.toFixed(2)} m/s`;
+            if (legStat) legStat.textContent = `${avgLeg.toFixed(1)} in`;
+            
+            // Update walker animation speed
+            const walker = document.getElementById("gaitWalker");
+            if (walker) {
+                walker.style.animationDuration = `${(10 / (avgSpeed * 10)).toFixed(2)}s`;
+            }
+        } else {
+            if (ageStat) ageStat.textContent = `${selectedAge} months`;
+            if (speedStat) speedStat.textContent = "—";
+            if (legStat) legStat.textContent = "—";
+        }
+    }
+    
+    // Fallback initialization for gait visualization (traditional method)
+    initializeGaitVisualizationFallback() {
+        // This would trigger the existing GaitVisualization class initialization
+        // But with the preloading system, this should rarely be needed
+        console.log('🔄 Using fallback gait visualization initialization');
+        
+        // Re-initialize the GaitVisualization class if it exists
+        if (window.gaitViz) {
+            window.gaitViz.updateChart();
+        }
+    }
+    
+    // NEW ANIMATION METHODS FOR CHAPTERS 2, 3, 4
+    
+    // Chapter 2: Stride Walker Animation
+    startStrideWalkerAnimation() {
+        console.log('🚶 Starting stride walker animation');
+        
+        // Initialize SVGs for both younger and older walkers
+        this.initWalkerSVG('younger');
+        this.initWalkerSVG('older');
+        
+        // Set up event listeners for stride walker controls
+        this.setupStrideWalkerControls();
+        
+        // Load initial subject data
+        this.loadStrideSubjectData();
+        
+        // Initialize stride variability plots
+        setTimeout(() => {
+            if (this.currentSection === 2) {
+                this.initializeStrideVariabilityPlots();
+            }
+        }, 200);
+        
+        // Auto-populate dropdowns and start with default subjects
+        setTimeout(() => {
+            if (this.currentSection === 2) {
+                this.populateStrideDropdowns();
+                this.autoSelectDefaultStrideSubjects();
+            }
+        }, 500);
+    }
+    
+    // Initialize walker SVG for stride animation
+    initWalkerSVG(walkerId) {
+        const svg = document.querySelector(`.kid-svg.${walkerId}`);
+        if (!svg) return;
+        
+        // Set up articulated walker SVG
+        svg.innerHTML = `
+            <rect x="40" y="20" width="30" height="30" fill="#FFD700"></rect> <!-- head -->
+            <rect x="40" y="50" width="20" height="30" fill="#FF6B6B"></rect> <!-- body -->
+            <!-- Left leg -->
+            <g class="leg left-leg" transform="translate(40,80)">
+                <rect class="thigh" x="0" y="0" width="5" height="15" fill="#4ECDC4"></rect>
+                <rect class="calf" x="0" y="15" width="5" height="15" fill="#4ECDC4"></rect>
+            </g>
+            <!-- Right leg -->
+            <g class="leg right-leg" transform="translate(50,80)">
+                <rect class="thigh" x="0" y="0" width="5" height="15" fill="#4ECDC4"></rect>
+                <rect class="calf" x="0" y="15" width="5" height="15" fill="#4ECDC4"></rect>
+            </g>
+        `;
+        
+        console.log(`🎬 Initialized ${walkerId} walker SVG`);
+    }
+    
+    // Set up stride walker controls
+    setupStrideWalkerControls() {
+        const startButton = document.getElementById('startButton');
+        if (startButton) {
+            console.log('✅ Found start button, attaching event listener');
+            
+            // Remove any existing event listeners
+            startButton.removeEventListener('click', this.toggleStrideWalking);
+            
+            // Add new event listener
+            startButton.addEventListener('click', () => {
+                console.log('🔘 Start button clicked');
+                this.toggleStrideWalking();
+            });
+        } else {
+            console.error('❌ Start button not found with ID: startButton');
+        }
+        
+        // Set up subject selection dropdowns
+        ['younger', 'older'].forEach(walkerId => {
+            const select = document.getElementById(`subjectSelect${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+            if (select) {
+                console.log(`✅ Found ${walkerId} subject select`);
+                select.addEventListener('change', (e) => {
+                    this.onStrideSubjectChange(walkerId, parseInt(e.target.value));
+                });
+            } else {
+                console.warn(`⚠️ Could not find subject select for ${walkerId}`);
+            }
+        });
+    }
+    
+    // Load stride subject data
+    loadStrideSubjectData() {
+        // Use existing gait data to populate stride subjects
+        if (!this.gaitData || this.gaitData.length === 0) {
+            console.warn('⚠️ No gait data available for stride subjects');
+            return;
+        }
+        
+        // Store stride data reference
+        this.strideSubjects = this.gaitData;
+        console.log('📊 Loaded stride subject data:', this.strideSubjects.length, 'subjects');
+    }
+    
+    // Populate stride dropdowns
+    populateStrideDropdowns() {
+        if (!this.strideSubjects) return;
+        
+        const youngerSelect = document.getElementById('subjectSelectYounger');
+        const olderSelect = document.getElementById('subjectSelectOlder');
+        
+        if (youngerSelect) {
+            youngerSelect.innerHTML = '<option value="">Choose subject...</option>';
+            this.strideSubjects.filter(s => s.group === 'young').forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject.id;
+                option.textContent = `Subject ${subject.id} (${subject.age} months, ${subject.speed.toFixed(2)} m/s)`;
+                youngerSelect.appendChild(option);
+            });
+        }
+        
+        if (olderSelect) {
+            olderSelect.innerHTML = '<option value="">Choose subject...</option>';
+            this.strideSubjects.filter(s => s.group === 'old').forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject.id;
+                option.textContent = `Subject ${subject.id} (${subject.age} months, ${subject.speed.toFixed(2)} m/s)`;
+                olderSelect.appendChild(option);
+            });
+        }
+    }
+    
+    // Auto-select default stride subjects
+    autoSelectDefaultStrideSubjects() {
+        const youngerSelect = document.getElementById('subjectSelectYounger');
+        const olderSelect = document.getElementById('subjectSelectOlder');
+        
+        if (youngerSelect && youngerSelect.options.length > 1) {
+            youngerSelect.selectedIndex = 1; // Select first available subject
+            this.onStrideSubjectChange('younger', parseInt(youngerSelect.value));
+        }
+        
+        if (olderSelect && olderSelect.options.length > 1) {
+            olderSelect.selectedIndex = 1; // Select first available subject
+            this.onStrideSubjectChange('older', parseInt(olderSelect.value));
+        }
+    }
+    
+    // Handle stride subject change
+    onStrideSubjectChange(walkerId, subjectId) {
+        const subject = this.strideSubjects.find(s => s.id === subjectId);
+        if (!subject) return;
+        
+        // Update stats display
+        const currentIntervalEl = document.getElementById(`currentInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+        const avgIntervalEl = document.getElementById(`avgInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+        const stdDevEl = document.getElementById(`stdDev${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+        
+        if (currentIntervalEl) currentIntervalEl.textContent = '-';
+        if (avgIntervalEl) avgIntervalEl.textContent = `${(600 + Math.random() * 200).toFixed(0)}`;
+        if (stdDevEl) stdDevEl.textContent = `${(50 + Math.random() * 30).toFixed(0)}`;
+        
+        // Reset and reinitialize the plot with subject-specific parameters
+        this.resetSubjectSpecificPlot(walkerId, subject);
+        
+        console.log(`📊 Selected ${walkerId} subject:`, subject.id, subject.speed.toFixed(2), 'm/s');
+    }
+    
+    // Reset and reinitialize plot for specific subject
+    resetSubjectSpecificPlot(walkerId, subject) {
+        // Stop any existing real-time updates
+        this.stopRealTimeVariabilityPlot(walkerId);
+        
+        // Store subject-specific parameters for this walker
+        this[`${walkerId}CurrentSubject`] = subject;
+        
+        // If walking is currently active, restart the plot with new subject parameters
+        const startButton = document.getElementById('startButton');
+        if (startButton && startButton.textContent.includes('Pause')) {
+            // Reinitialize plot with subject-specific parameters
+            this.initializeRealTimeVariabilityPlot(walkerId);
+            this.startSubjectSpecificAnimation(walkerId, subject);
+        } else {
+            // Just initialize the empty plot for when walking starts
+            this.initializeRealTimeVariabilityPlot(walkerId);
+        }
+    }
+    
+    // Start subject-specific animation
+    startSubjectSpecificAnimation(walkerId, subject) {
+        // Generate subject-specific variability parameters
+        const baseStdDev = this.calculateSubjectBaseStdDev(subject);
+        const variabilityRange = this.calculateSubjectVariabilityRange(subject);
+        
+        let stepCount = this[`${walkerId}StrideCount`] || 0;
+        
+        const stepInterval = setInterval(() => {
+            if (this.currentSection !== 2) {
+                clearInterval(stepInterval);
+                return;
+            }
+            
+            stepCount++;
+            this[`${walkerId}StrideCount`] = stepCount;
+            
+            // Generate subject-specific stride variability
+            const currentStdDev = this.generateSubjectSpecificStdDev(subject, stepCount, baseStdDev, variabilityRange);
+            
+            // Add point to real-time plot
+            this.addRealTimeVariabilityPoint(walkerId, currentStdDev);
+            
+            // Update stats
+            this.updateStrideStats(walkerId, stepCount, currentStdDev);
+            
+        }, 1500);
+        
+        // Store interval for cleanup
+        this.addSectionInterval('section2', stepInterval);
+        this[`${walkerId}VariabilityInterval`] = stepInterval;
+    }
+    
+    // Calculate subject-specific base standard deviation
+    calculateSubjectBaseStdDev(subject) {
+        // Base variability on age and speed characteristics
+        const ageGroup = subject.group;
+        const speed = subject.speed;
+        const age = subject.age;
+        
+        // Younger subjects and slower speeds tend to have higher variability
+        let baseStdDev;
+        if (ageGroup === 'young') {
+            baseStdDev = 70 - (speed * 10); // Slower young children more variable
+        } else if (ageGroup === 'middle') {
+            baseStdDev = 50 - (speed * 8);
+        } else {
+            baseStdDev = 35 - (speed * 5); // Older children more consistent
+        }
+        
+        // Add age-specific adjustment
+        baseStdDev += (60 - age) * 0.3; // Younger age = more variability
+        
+        return Math.max(15, Math.min(80, baseStdDev)); // Clamp between realistic bounds
+    }
+    
+    // Calculate subject-specific variability range
+    calculateSubjectVariabilityRange(subject) {
+        const ageGroup = subject.group;
+        const speed = subject.speed;
+        
+        // Range of variation around base
+        let range;
+        if (ageGroup === 'young') {
+            range = 25 - (speed * 3); // Faster young children more consistent
+        } else if (ageGroup === 'middle') {
+            range = 20 - (speed * 2);
+        } else {
+            range = 15 - (speed * 1);
+        }
+        
+        return Math.max(5, Math.min(30, range));
+    }
+    
+    // Generate subject-specific stride variability at a given step
+    generateSubjectSpecificStdDev(subject, stepCount, baseStdDev, variabilityRange) {
+        // Create realistic patterns based on subject characteristics
+        const progress = (stepCount % 12) / 12; // 12-step cycles for natural variation
+        
+        // Sinusoidal trend component (natural gait patterns)
+        const trendComponent = baseStdDev + (variabilityRange * Math.sin(progress * Math.PI * 2));
+        
+        // Add fatigue effect (slight increase in variability over time)
+        const fatigueEffect = stepCount * 0.2;
+        
+        // Random noise (more for younger, less for older)
+        const noiseRange = subject.group === 'young' ? 15 : subject.group === 'middle' ? 10 : 5;
+        const randomComponent = (Math.random() - 0.5) * noiseRange;
+        
+        const currentStdDev = trendComponent + fatigueEffect + randomComponent;
+        
+        return Math.max(10, Math.min(100, currentStdDev)); // Realistic bounds
+    }
+    
+    // Update stride statistics display
+    updateStrideStats(walkerId, stepCount, currentStdDev) {
+        const stepCountEl = document.getElementById(`stepCount${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+        const currentIntervalEl = document.getElementById(`currentInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+        const stdDevEl = document.getElementById(`stdDev${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+        
+        if (stepCountEl) stepCountEl.textContent = stepCount;
+        
+        // Generate realistic current interval with some randomness
+        const interval = 500 + Math.random() * 300;
+        if (currentIntervalEl) {
+            currentIntervalEl.textContent = `${interval.toFixed(0)}`;
+        }
+        
+        if (stdDevEl) {
+            stdDevEl.textContent = `${currentStdDev.toFixed(0)}`;
+        }
+    }
+    
+    // Generate mock stride variability data for a subject
+    generateStrideVariabilityData(subject) {
+        const numStrides = 20; // Number of stride intervals to show
+        const baseInterval = 600 + (subject.speed * 100); // Base interval in ms
+        const stdDevRange = subject.group === 'young' ? [40, 80] : [20, 50]; // Younger subjects more variable
+        
+        const data = [];
+        for (let i = 0; i < numStrides; i++) {
+            // Generate mock standard deviation that varies over time
+            const progress = i / (numStrides - 1);
+            const baseStdDev = stdDevRange[0] + (stdDevRange[1] - stdDevRange[0]) * 
+                             (0.5 + 0.3 * Math.sin(progress * Math.PI * 2) + 0.2 * Math.random());
+            
+            data.push({
+                stride: i + 1,
+                stdDev: Math.max(10, baseStdDev) // Ensure minimum standard deviation
+            });
+        }
+        
+        return data;
+    }
+    
+    // Create or update stride variability plot
+    updateStrideVariabilityPlot(walkerId, subject) {
+        const canvasId = `strideVariability${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`;
+        const canvas = document.getElementById(canvasId);
+        
+        if (!canvas) {
+            console.warn(`Canvas not found: ${canvasId}`);
+            return;
+        }
+        
+        // Destroy existing chart if it exists
+        const chartKey = `${walkerId}VariabilityChart`;
+        if (this[chartKey]) {
+            this[chartKey].destroy();
+        }
+        
+        // Generate mock data for this subject
+        const data = this.generateStrideVariabilityData(subject);
+        
+        // Create color scheme based on walker type
+        const colors = {
+            younger: {
+                line: '#4ecdc4',
+                fill: 'rgba(76, 205, 196, 0.1)',
+                grid: 'rgba(76, 205, 196, 0.2)'
+            },
+            older: {
+                line: '#ff6b6b', 
+                fill: 'rgba(255, 107, 107, 0.1)',
+                grid: 'rgba(255, 107, 107, 0.2)'
+            }
+        };
+        
+        const colorScheme = colors[walkerId] || colors.younger;
+        
+        // Create new chart
+        this[chartKey] = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: data.map(d => d.stride),
+                datasets: [{
+                    data: data.map(d => d.stdDev),
+                    borderColor: colorScheme.line,
+                    backgroundColor: colorScheme.fill,
+                    borderWidth: 1.5,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 2,
+                    pointBackgroundColor: colorScheme.line,
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 0.5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: colorScheme.line,
+                        borderWidth: 1,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(context) {
+                                return `Stride ${context[0].label}`;
+                            },
+                            label: function(context) {
+                                return `Std Dev: ${context.parsed.y.toFixed(1)} ms`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: false
+                        },
+                        grid: {
+                            display: true,
+                            color: colorScheme.grid,
+                            lineWidth: 0.5
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                size: 9
+                            },
+                            maxTicksLimit: 6
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: false
+                        },
+                        grid: {
+                            display: true,
+                            color: colorScheme.grid,
+                            lineWidth: 0.5
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                size: 9
+                            },
+                            maxTicksLimit: 4,
+                            callback: function(value) {
+                                return value.toFixed(0);
+                            }
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        hoverRadius: 3
+                    }
+                }
+            }
+        });
+        
+        console.log(`📈 Updated ${walkerId} stride variability plot for subject ${subject.id}`);
+    }
+    
+    // Initialize stride variability plots with default data
+    initializeStrideVariabilityPlots() {
+        // Create default plots for both walkers
+        ['younger', 'older'].forEach(walkerId => {
+            const defaultSubject = {
+                id: walkerId === 'younger' ? 'default_young' : 'default_old',
+                speed: walkerId === 'younger' ? 1.1 : 1.3,
+                group: walkerId === 'younger' ? 'young' : 'old'
+            };
+            
+            this.updateStrideVariabilityPlot(walkerId, defaultSubject);
+        });
+    }
+    
+    // Toggle stride walking animation
+    toggleStrideWalking() {
+        console.log('🔄 Toggle stride walking called');
+        
+        const startButton = document.getElementById('startButton');
+        if (!startButton) {
+            console.error('❌ Start button not found in toggle function');
+            return;
+        }
+        
+        const isWalking = startButton.textContent.includes('Pause');
+        console.log('📊 Current walking state:', isWalking);
+        
+        if (isWalking) {
+            startButton.textContent = 'START WALKING';
+            this.stopStrideWalking();
+        } else {
+            startButton.textContent = 'PAUSE WALKING';
+            this.startStrideWalking();
+        }
+    }
+    
+    // Reset stride walker animation
+    resetStrideWalkerAnimation() {
+        // Reset SVGs
+        ['younger', 'older'].forEach(walkerId => {
+            const svg = document.querySelector(`.kid-svg.${walkerId}`);
+            if (svg) {
+                svg.style.animation = '';
+                svg.style.transform = 'scale(0.7)'; // Match CSS scale
+                svg.innerHTML = ''; // Clear SVG content
+            }
+            
+            // Clear current subject data
+            this[`${walkerId}CurrentSubject`] = null;
+            this[`${walkerId}StrideCount`] = 0;
+            
+            // Reset stats
+            const currentIntervalEl = document.getElementById(`currentInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+            const avgIntervalEl = document.getElementById(`avgInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+            const stdDevEl = document.getElementById(`stdDev${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+            const stepCountEl = document.getElementById(`stepCount${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+            
+            if (currentIntervalEl) currentIntervalEl.textContent = '-';
+            if (avgIntervalEl) avgIntervalEl.textContent = '-';
+            if (stdDevEl) stdDevEl.textContent = '-';
+            if (stepCountEl) stepCountEl.textContent = '0';
+            
+            // Destroy variability charts
+            const chartKey = `${walkerId}VariabilityChart`;
+            if (this[chartKey]) {
+                this[chartKey].destroy();
+                this[chartKey] = null;
+            }
+        });
+        
+        // Reset dropdowns
+        ['subjectSelectYounger', 'subjectSelectOlder'].forEach(selectId => {
+            const select = document.getElementById(selectId);
+            if (select) {
+                select.innerHTML = '<option value="">Loading subjects...</option>';
+            }
+        });
+        
+        // Reset button
+        const startButton = document.getElementById('startButton');
+        if (startButton) {
+            startButton.textContent = 'Start Walking';
+        }
+        
+        console.log('🔄 Reset stride walker animation');
+    }
+    
+    // Chapter 3: Comparison Race Animation
+    startComparisonRaceAnimation() {
+        console.log('🏁 Starting comparison race animation');
+        
+        // Initialize race SVGs
+        ['young', 'middle', 'old'].forEach(ageGroup => {
+            this.initRacerSVG(ageGroup);
+        });
+        
+        // Set up race controls
+        this.setupRaceControls();
+        
+        // Load race subject data
+        this.loadRaceSubjectData();
+        
+        // Auto-populate race dropdowns
+        setTimeout(() => {
+            if (this.currentSection === 3) {
+                this.populateRaceDropdowns();
+                this.autoSelectDefaultRaceSubjects();
+            }
+        }, 500);
+    }
+    
+    // Initialize racer SVG
+    initRacerSVG(ageGroup) {
+        const svg = document.querySelector(`.kid-svg.${ageGroup}`);
+        if (!svg) return;
+        
+        const colors = {
+            young: '#4ECDC4',
+            middle: '#45B7D1', 
+            old: '#FF6B6B'
+        };
+        
+        // Set up racer SVG
+        svg.innerHTML = `
+            <rect x="35" y="20" width="30" height="30" fill="#FFD700"></rect>
+            <rect x="40" y="50" width="20" height="30" fill="${colors[ageGroup]}"></rect>
+            <rect x="35" y="80" width="10" height="20" fill="${colors[ageGroup]}"></rect>
+            <rect x="55" y="80" width="10" height="20" fill="${colors[ageGroup]}"></rect>
+        `;
+        
+        console.log(`🎬 Initialized ${ageGroup} racer SVG`);
+    }
+    
+    // Set up race controls
+    setupRaceControls() {
+        const raceButton = document.getElementById('raceButton');
+        if (raceButton) {
+            raceButton.addEventListener('click', () => {
+                this.startRace();
+            });
+        }
+        
+        // Set up subject selection dropdowns for race
+        ['young', 'middle', 'old'].forEach(ageGroup => {
+            const select = document.getElementById(`${ageGroup}Select`);
+            if (select) {
+                select.addEventListener('change', (e) => {
+                    this.onRaceSubjectChange(ageGroup, parseInt(e.target.value));
+                });
+            }
+        });
+    }
+    
+    // Load race subject data
+    loadRaceSubjectData() {
+        this.raceSubjects = this.gaitData;
+        console.log('📊 Loaded race subject data:', this.raceSubjects.length, 'subjects');
+    }
+    
+    // Populate race dropdowns
+    populateRaceDropdowns() {
+        if (!this.raceSubjects) return;
+        
+        ['young', 'middle', 'old'].forEach(ageGroup => {
+            const select = document.getElementById(`${ageGroup}Select`);
+            if (select) {
+                select.innerHTML = '<option value="">Choose subject...</option>';
+                this.raceSubjects.filter(s => s.group === ageGroup).forEach(subject => {
+                    const option = document.createElement('option');
+                    option.value = subject.id;
+                    option.textContent = `Subject ${subject.id} (${subject.speed.toFixed(2)} m/s)`;
+                    select.appendChild(option);
+                });
+            }
+        });
+    }
+    
+    // Auto-select default race subjects
+    autoSelectDefaultRaceSubjects() {
+        ['young', 'middle', 'old'].forEach(ageGroup => {
+            const select = document.getElementById(`${ageGroup}Select`);
+            if (select && select.options.length > 1) {
+                select.selectedIndex = 1;
+                this.onRaceSubjectChange(ageGroup, parseInt(select.value));
+            }
+        });
+    }
+    
+    // Handle race subject change
+    onRaceSubjectChange(ageGroup, subjectId) {
+        const subject = this.raceSubjects.find(s => s.id === subjectId);
+        if (!subject) return;
+        
+        // Update info display
+        const infoEl = document.getElementById(`${ageGroup}Info`);
+        if (infoEl) {
+            const spans = infoEl.getElementsByClassName('stat-value');
+            if (spans.length >= 3) {
+                spans[0].textContent = `${subject.age} mo`;
+                spans[1].textContent = `${subject.speed.toFixed(2)} m/s`;
+                spans[2].textContent = `${subject.height.toFixed(1)}"`;
+            }
+        }
+        
+        console.log(`📊 Selected ${ageGroup} racer:`, subject.id, subject.speed.toFixed(2), 'm/s');
+    }
+    
+    // Start race
+    startRace() {
+        console.log('🏁 Starting race');
+        
+        const raceButton = document.getElementById('raceButton');
+        if (raceButton) {
+            raceButton.textContent = 'Racing...';
+            raceButton.disabled = true;
+        }
+        
+        // Get selected subjects and start race
+        const subjects = {};
+        ['young', 'middle', 'old'].forEach(ageGroup => {
+            const select = document.getElementById(`${ageGroup}Select`);
+            if (select && select.value) {
+                subjects[ageGroup] = this.raceSubjects.find(s => s.id === parseInt(select.value));
+            }
+        });
+        
+        this.animateRace(subjects);
+    }
+    
+    // Animate race
+    animateRace(subjects) {
+        const raceDuration = 4000;
+        
+        Object.entries(subjects).forEach(([ageGroup, subject]) => {
+            if (!subject) return;
+            
+            const svg = document.querySelector(`.kid-svg.${ageGroup}`);
+            if (svg) {
+                const speed = subject.speed;
+                const maxSpeed = Math.max(...Object.values(subjects).map(s => s ? s.speed : 0));
+                const position = (speed / maxSpeed) * 70; // 70% max position
+                
+                svg.style.transition = `left ${raceDuration}ms ease-out`;
+                svg.style.left = `${position}%`;
+                svg.classList.add('racing');
+            }
+        });
+        
+        // Reset after race
+        setTimeout(() => {
+            if (this.currentSection === 3) {
+                const raceButton = document.getElementById('raceButton');
+                if (raceButton) {
+                    raceButton.textContent = 'Start Race';
+                    raceButton.disabled = false;
+                }
+                
+                // Remove racing class
+                ['young', 'middle', 'old'].forEach(ageGroup => {
+                    const svg = document.querySelector(`.kid-svg.${ageGroup}`);
+                    if (svg) {
+                        svg.classList.remove('racing');
+                    }
+                });
+            }
+        }, raceDuration + 1000);
+    }
+    
+    // Chapter 4: Individual Walker Animation
+    startIndividualWalkerAnimation() {
+        console.log('🚶 Starting individual walker animation');
+        
+        // Initialize individual walker SVG
+        this.initIndividualWalkerSVG();
+        
+        // Set up individual walker controls
+        this.setupIndividualWalkerControls();
+        
+        // Load individual walker data
+        this.loadIndividualWalkerData();
+        
+        // Auto-populate filters and dropdown
+        setTimeout(() => {
+            if (this.currentSection === 4) {
+                this.setupIndividualFilters();
+                this.updateIndividualWalkerDropdown();
+            }
+        }, 500);
+    }
+    
+    // Initialize individual walker SVG
+    initIndividualWalkerSVG() {
+        const svg = document.querySelector('.kid-svg.individual');
+        if (!svg) return;
+        
+        svg.innerHTML = `
+            <rect x="40" y="20" width="30" height="30" fill="#FFD700"></rect>
+            <rect x="40" y="50" width="20" height="30" fill="#FF6B6B"></rect>
+            <rect x="35" y="80" width="10" height="20" fill="#4ECDC4"></rect>
+            <rect x="55" y="80" width="10" height="20" fill="#4ECDC4"></rect>
+        `;
+        
+        console.log('🎬 Initialized individual walker SVG');
+    }
+    
+    // Set up individual walker controls
+    setupIndividualWalkerControls() {
+        const ageGroupFilter = document.getElementById('ageGroupFilter');
+        const genderFilter = document.getElementById('genderFilter');
+        const individualSelect = document.getElementById('individualSelect');
+        
+        if (ageGroupFilter) {
+            ageGroupFilter.addEventListener('change', () => {
+                this.updateIndividualWalkerDropdown();
+            });
+        }
+        
+        if (genderFilter) {
+            genderFilter.addEventListener('change', () => {
+                this.updateIndividualWalkerDropdown();
+            });
+        }
+        
+        if (individualSelect) {
+            individualSelect.addEventListener('change', (e) => {
+                this.onIndividualWalkerChange(parseInt(e.target.value));
+            });
+        }
+    }
+    
+    // Load individual walker data
+    loadIndividualWalkerData() {
+        this.individualWalkers = this.gaitData;
+        console.log('📊 Loaded individual walker data:', this.individualWalkers.length, 'walkers');
+    }
+    
+    // Set up individual filters
+    setupIndividualFilters() {
+        const ageGroupFilter = document.getElementById('ageGroupFilter');
+        const genderFilter = document.getElementById('genderFilter');
+        
+        if (ageGroupFilter) {
+            ageGroupFilter.innerHTML = `
+                <option value="">All Ages</option>
+                <option value="young">Young (20-40 months)</option>
+                <option value="middle">Middle (40-60 months)</option>
+                <option value="old">Older (60+ months)</option>
+            `;
+        }
+        
+        if (genderFilter) {
+            genderFilter.innerHTML = `
+                <option value="">All Genders</option>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+            `;
+        }
+    }
+    
+    // Update individual walker dropdown
+    updateIndividualWalkerDropdown() {
+        const ageGroupFilter = document.getElementById('ageGroupFilter');
+        const genderFilter = document.getElementById('genderFilter');
+        const individualSelect = document.getElementById('individualSelect');
+        
+        if (!individualSelect || !this.individualWalkers) return;
+        
+        let filteredWalkers = this.individualWalkers;
+        
+        // Apply age group filter
+        if (ageGroupFilter && ageGroupFilter.value) {
+            filteredWalkers = filteredWalkers.filter(w => w.group === ageGroupFilter.value);
+        }
+        
+        // Apply gender filter
+        if (genderFilter && genderFilter.value) {
+            filteredWalkers = filteredWalkers.filter(w => w.gender === genderFilter.value);
+        }
+        
+        // Populate dropdown
+        individualSelect.innerHTML = '<option value="">Choose a walker...</option>';
+        filteredWalkers.forEach(walker => {
+            const option = document.createElement('option');
+            option.value = walker.id;
+            option.textContent = `Walker ${walker.id} (${walker.age} mo, ${walker.gender}, ${walker.speed.toFixed(2)} m/s)`;
+            individualSelect.appendChild(option);
+        });
+    }
+    
+    // Handle individual walker change
+    onIndividualWalkerChange(walkerId) {
+        const walker = this.individualWalkers.find(w => w.id === walkerId);
+        if (!walker) return;
+        
+        // Update walker display
+        this.displayIndividualWalker(walker);
+        
+        console.log('📊 Selected individual walker:', walker.id, walker.speed.toFixed(2), 'm/s');
+    }
+    
+    // Display individual walker
+    displayIndividualWalker(walker) {
+        const svg = document.querySelector('.kid-svg.individual');
+        if (!svg) return;
+        
+        // Start walking animation
+        svg.style.animation = `individualWalk ${(3 / walker.speed).toFixed(1)}s ease-in-out infinite`;
+        
+        // Update walker info (if elements exist)
+        const ageDisplay = document.getElementById('individualAge');
+        const speedDisplay = document.getElementById('individualSpeed');
+        const heightDisplay = document.getElementById('individualHeight');
+        
+        if (ageDisplay) ageDisplay.textContent = `${walker.age} months`;
+        if (speedDisplay) speedDisplay.textContent = `${walker.speed.toFixed(2)} m/s`;
+        if (heightDisplay) heightDisplay.textContent = `${walker.height.toFixed(1)} inches`;
+    }
+    
+    // Reset individual walker
+    resetIndividualWalker() {
+        const svg = document.querySelector('.kid-svg.individual');
+        if (svg) {
+            svg.style.animation = '';
+        }
+        
+        // Reset displays
+        const ageDisplay = document.getElementById('individualAge');
+        const speedDisplay = document.getElementById('individualSpeed');
+        const heightDisplay = document.getElementById('individualHeight');
+        
+        if (ageDisplay) ageDisplay.textContent = '-';
+        if (speedDisplay) speedDisplay.textContent = '-';
+        if (heightDisplay) heightDisplay.textContent = '-';
+    }
+
+    // Reset comparison race animation
+    resetComparisonRaceAnimation() {
+        // Reset race SVGs
+        ['young', 'middle', 'old'].forEach(ageGroup => {
+            const svg = document.querySelector(`.kid-svg.${ageGroup}`);
+            if (svg) {
+                svg.style.animation = '';
+                svg.style.left = '0%';
+                svg.style.transition = '';
+                svg.classList.remove('racing');
+                svg.innerHTML = ''; // Clear SVG content
+            }
+            
+            // Reset info displays
+            const infoEl = document.getElementById(`${ageGroup}Info`);
+            if (infoEl) {
+                const spans = infoEl.getElementsByClassName('stat-value');
+                Array.from(spans).forEach(span => span.textContent = '-');
+            }
+            
+            // Reset dropdowns
+            const select = document.getElementById(`${ageGroup}Select`);
+            if (select) {
+                select.innerHTML = '<option value="">Choose subject...</option>';
+            }
+        });
+        
+        // Reset race button
+        const raceButton = document.getElementById('raceButton');
+        if (raceButton) {
+            raceButton.textContent = 'Start Race';
+            raceButton.disabled = false;
+        }
+        
+        console.log('🔄 Reset comparison race animation');
+    }
+
+    // Reset individual walker animation
+    resetIndividualWalkerAnimation() {
+        // Reset individual walker
+        this.resetIndividualWalker();
+        
+        // Reset filters
+        const ageGroupFilter = document.getElementById('ageGroupFilter');
+        const genderFilter = document.getElementById('genderFilter');
+        const individualSelect = document.getElementById('individualSelect');
+        
+        if (ageGroupFilter) ageGroupFilter.selectedIndex = 0;
+        if (genderFilter) genderFilter.selectedIndex = 0;
+        if (individualSelect) individualSelect.innerHTML = '<option value="">Choose a walker...</option>';
+        
+        // Clear SVG
+        const svg = document.querySelector('.kid-svg.individual');
+        if (svg) {
+            svg.style.animation = '';
+            svg.style.transform = 'scale(0.7)'; // Match CSS scale
+            svg.innerHTML = ''; // Clear SVG content
+        }
+        
+        console.log('🔄 Reset individual walker animation');
+    }
+
+    // Start stride walking
+    startStrideWalking() {
+        console.log('🏃 Starting stride walking animations');
+        
+        ['younger', 'older'].forEach(walkerId => {
+            // Initialize current subjects from dropdowns if not already set
+            if (!this[`${walkerId}CurrentSubject`]) {
+                const selectId = `subjectSelect${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`;
+                const select = document.getElementById(selectId);
+                if (select && select.value) {
+                    const subjectId = parseInt(select.value);
+                    const subject = this.strideSubjects?.find(s => s.id === subjectId);
+                    if (subject) {
+                        this[`${walkerId}CurrentSubject`] = subject;
+                    }
+                }
+            }
+            
+            this.animateStrideWalker(walkerId);
+            // Initialize real-time variability plot
+            this.initializeRealTimeVariabilityPlot(walkerId);
+        });
+    }
+
+    // Stop stride walking
+    stopStrideWalking() {
+        console.log('⏸️ Stopping stride walking animations');
+        
+        // Reset walker positions and stop animations
+        ['younger', 'older'].forEach(walkerId => {
+            const svg = document.querySelector(`.kid-svg.${walkerId}`);
+            if (svg) {
+                svg.style.animation = '';
+                svg.style.transform = 'scale(0.7)'; // Match CSS scale
+            }
+            
+            // Stop real-time plot updates
+            this.stopRealTimeVariabilityPlot(walkerId);
+        });
+    }
+    
+    // Initialize real-time variability plot
+    initializeRealTimeVariabilityPlot(walkerId) {
+        const canvasId = `strideVariability${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`;
+        const canvas = document.getElementById(canvasId);
+        
+        if (!canvas) {
+            console.warn(`Canvas not found: ${canvasId}`);
+            return;
+        }
+        
+        // Destroy existing chart if it exists
+        const chartKey = `${walkerId}VariabilityChart`;
+        if (this[chartKey]) {
+            this[chartKey].destroy();
+        }
+        
+        // Color scheme based on walker type
+        const colors = {
+            younger: {
+                line: '#4ecdc4',
+                fill: 'rgba(76, 205, 196, 0.1)',
+                grid: 'rgba(76, 205, 196, 0.2)',
+                tracker: '#ffffff'
+            },
+            older: {
+                line: '#ff6b6b', 
+                fill: 'rgba(255, 107, 107, 0.1)',
+                grid: 'rgba(255, 107, 107, 0.2)',
+                tracker: '#ffffff'
+            }
+        };
+        
+        const colorScheme = colors[walkerId] || colors.younger;
+        
+        // Initialize empty chart for real-time updates
+        this[chartKey] = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Stride Variability',
+                    data: [],
+                    borderColor: colorScheme.line,
+                    backgroundColor: colorScheme.fill,
+                    borderWidth: 1.5,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 2,
+                    pointBackgroundColor: colorScheme.line,
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 0.5
+                }, {
+                    label: 'Current Position',
+                    data: [],
+                    borderColor: colorScheme.tracker,
+                    backgroundColor: colorScheme.tracker,
+                    borderWidth: 0,
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: colorScheme.tracker,
+                    pointBorderColor: colorScheme.line,
+                    pointBorderWidth: 2,
+                    showLine: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false, // Disable animations for real-time updates
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: colorScheme.line,
+                        borderWidth: 1,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(context) {
+                                return `Stride ${context[0].label}`;
+                            },
+                            label: function(context) {
+                                if (context.datasetIndex === 0) {
+                                    return `Std Dev: ${context.parsed.y.toFixed(1)} ms`;
+                                } else {
+                                    return `Current: ${context.parsed.y.toFixed(1)} ms`;
+                                }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: false
+                        },
+                        grid: {
+                            display: true,
+                            color: colorScheme.grid,
+                            lineWidth: 0.5
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                size: 9
+                            },
+                            maxTicksLimit: 6
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: false
+                        },
+                        grid: {
+                            display: true,
+                            color: colorScheme.grid,
+                            lineWidth: 0.5
+                        },
+                        ticks: {
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            font: {
+                                size: 9
+                            },
+                            maxTicksLimit: 4,
+                            callback: function(value) {
+                                return value.toFixed(0);
+                            }
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        hoverRadius: 3
+                    }
+                }
+            }
+        });
+        
+        // Initialize real-time data storage
+        this[`${walkerId}VariabilityData`] = [];
+        this[`${walkerId}StrideCount`] = 0;
+        
+        console.log(`📈 Initialized real-time ${walkerId} variability plot`);
+    }
+    
+    // Stop real-time variability plot
+    stopRealTimeVariabilityPlot(walkerId) {
+        // Clear any running update intervals
+        const intervalKey = `${walkerId}VariabilityInterval`;
+        if (this[intervalKey]) {
+            clearInterval(this[intervalKey]);
+            this[intervalKey] = null;
+        }
+    }
+    
+    // Add real-time data point to variability plot
+    addRealTimeVariabilityPoint(walkerId, stdDev) {
+        const chartKey = `${walkerId}VariabilityChart`;
+        const chart = this[chartKey];
+        
+        if (!chart) return;
+        
+        const dataKey = `${walkerId}VariabilityData`;
+        const countKey = `${walkerId}StrideCount`;
+        
+        // Get current stride count
+        const strideIndex = this[countKey] || 1;
+        
+        // Add new data point to the line
+        chart.data.labels.push(strideIndex);
+        chart.data.datasets[0].data.push(stdDev);
+        
+        // Update tracker dots to show progression along the line
+        // Create an array that traces the line with dots, with the newest being most prominent
+        const lineData = chart.data.datasets[0].data;
+        const trackerData = [];
+        
+        for (let i = 0; i < lineData.length; i++) {
+            if (i === lineData.length - 1) {
+                // Current position - bright white dot
+                trackerData.push(lineData[i]);
+            } else if (i >= lineData.length - 3) {
+                // Recent positions - fading white dots
+                trackerData.push(lineData[i]);
+            } else {
+                // Older positions - no dots
+                trackerData.push(null);
+            }
+        }
+        
+        chart.data.datasets[1].data = trackerData;
+        
+        // Update point styles for the tracker dataset to show fading effect
+        const pointRadius = [];
+        const pointBackgroundColor = [];
+        const pointBorderColor = [];
+        
+        for (let i = 0; i < trackerData.length; i++) {
+            if (trackerData[i] !== null) {
+                if (i === trackerData.length - 1) {
+                    // Current position - large bright white dot
+                    pointRadius.push(5);
+                    pointBackgroundColor.push('#ffffff');
+                    pointBorderColor.push(walkerId === 'younger' ? '#4ecdc4' : '#ff6b6b');
+                } else if (i >= trackerData.length - 3) {
+                    // Recent positions - smaller, semi-transparent dots
+                    const age = trackerData.length - 1 - i;
+                    const opacity = 1 - (age * 0.3); // Fade out
+                    const size = 4 - age; // Get smaller
+                    pointRadius.push(Math.max(2, size));
+                    pointBackgroundColor.push(`rgba(255, 255, 255, ${opacity})`);
+                    pointBorderColor.push(walkerId === 'younger' ? `rgba(76, 205, 196, ${opacity})` : `rgba(255, 107, 107, ${opacity})`);
+                }
+            } else {
+                pointRadius.push(0);
+                pointBackgroundColor.push('transparent');
+                pointBorderColor.push('transparent');
+            }
+        }
+        
+        // Apply the dynamic styling
+        chart.data.datasets[1].pointRadius = pointRadius;
+        chart.data.datasets[1].pointBackgroundColor = pointBackgroundColor;
+        chart.data.datasets[1].pointBorderColor = pointBorderColor;
+        
+        // Keep only last 20 points for performance
+        const maxPoints = 20;
+        if (chart.data.labels.length > maxPoints) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+            chart.data.datasets[1].data.shift();
+            
+            // Also shift the styling arrays
+            chart.data.datasets[1].pointRadius.shift();
+            chart.data.datasets[1].pointBackgroundColor.shift();
+            chart.data.datasets[1].pointBorderColor.shift();
+        }
+        
+        // Update chart
+        chart.update('none'); // Use 'none' mode for immediate update without animation
+    }
+    
+    // Animate individual stride walker
+    animateStrideWalker(walkerId) {
+        const svg = document.querySelector(`.kid-svg.${walkerId}`);
+        if (!svg) {
+            console.error(`❌ Could not find SVG for walker: ${walkerId}`);
+            return;
+        }
+        
+        console.log(`🏃 Starting animation for ${walkerId} walker`);
+        
+        // Start walking animation with leg movement
+        svg.style.animation = 'strideWalk 2s ease-in-out infinite';
+        svg.style.transform = 'scale(0.7)'; // Match CSS scale
+        
+        // Get the current subject for this walker (if selected)
+        const subject = this[`${walkerId}CurrentSubject`];
+        
+        if (subject) {
+            // Use subject-specific animation
+            this.startSubjectSpecificAnimation(walkerId, subject);
+        } else {
+            // Use default animation if no subject selected
+            this.startDefaultAnimation(walkerId);
+        }
+        
+        console.log(`✅ Animation started for ${walkerId}`);
+    }
+    
+    // Start default animation (when no subject is selected)
+    startDefaultAnimation(walkerId) {
+        // Generate baseline variability parameters for this walker type
+        const baseStdDev = walkerId === 'younger' ? 60 : 35;
+        const variabilityRange = walkerId === 'younger' ? 30 : 15;
+        
+        let stepCount = 0;
+        
+        const stepInterval = setInterval(() => {
+            if (this.currentSection !== 2) {
+                clearInterval(stepInterval);
+                return;
+            }
+            
+            stepCount++;
+            this[`${walkerId}StrideCount`] = stepCount;
+            
+            // Generate default stride variability data
+            const progress = (stepCount % 10) / 10;
+            const trendComponent = baseStdDev + (variabilityRange * Math.sin(progress * Math.PI * 2));
+            const randomComponent = (Math.random() - 0.5) * 20;
+            const currentStdDev = Math.max(10, trendComponent + randomComponent);
+            
+            // Add point to real-time plot
+            this.addRealTimeVariabilityPoint(walkerId, currentStdDev);
+            
+            // Update stats
+            this.updateStrideStats(walkerId, stepCount, currentStdDev);
+            
+        }, 1500);
+        
+        // Store interval for cleanup
+        this.addSectionInterval('section2', stepInterval);
+        this[`${walkerId}VariabilityInterval`] = stepInterval;
+    }
+    
+    // Bind keyboard and other events
     bindEvents() {
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
-            if (this.isSnapping) return;
+            if (this.isSnapping) return; // Don't allow keyboard nav while snapping
             
             switch(e.key) {
-                case 'ArrowDown':
-                case ' ':
-                    e.preventDefault();
-                    this.navigateToNextSection();
-                    break;
                 case 'ArrowUp':
+                case 'PageUp':
                     e.preventDefault();
                     this.navigateToPrevSection();
+                    break;
+                case 'ArrowDown':
+                case 'PageDown':
+                case ' ': // Space bar
+                    e.preventDefault();
+                    this.navigateToNextSection();
                     break;
                 case 'Home':
                     e.preventDefault();
@@ -1816,58 +3654,51 @@ class ScrollytellingEngine {
                     e.preventDefault();
                     this.navigateToSection(this.sections.length - 1);
                     break;
+                case 'Escape':
+                    // Reset to beginning
+                    e.preventDefault();
+                    this.navigateToSection(0);
+                    break;
             }
         });
         
-        // Kid interactions
-        const kidSvg = document.getElementById('kidSvg');
-        if (kidSvg) {
-            kidSvg.addEventListener('click', this.onKidClick.bind(this));
-        }
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Debounced resize handler
+            clearTimeout(this.resizeTimeout);
+            this.resizeTimeout = setTimeout(() => {
+                this.setupSections(); // Recalculate section positions
+                this.updateProgressIndicator();
+                console.log('📐 Sections recalculated after resize');
+            }, 250);
+        });
         
-        // Resize handling
-        window.addEventListener('resize', this.debounce(() => {
-            const wasMobile = this.isMobile;
-            this.isMobile = window.innerWidth <= 768;
-            
-            if (wasMobile !== this.isMobile) {
-                this.setupSections();
-                this.updateVisualStates();
+        // Handle visibility change (when user switches tabs)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Pause any running animations when tab becomes hidden
+                this.pauseAllAnimations();
+            } else {
+                // Resume animations when tab becomes visible
+                this.resumeAllAnimations();
             }
-        }, 250));
+        });
         
-        // Restart function
-        window.restartJourney = () => {
-            // Reset all sections before going to hero
-            this.resetAllSections();
-            this.navigateToSection(0);
-        };
+        console.log('🎮 Event bindings initialized');
     }
     
-    onKidClick() {
-        if (this.isSnapping) return;
-        
-        const kidSvg = document.getElementById('kidSvg');
-        const animations = ['kidJump', 'kidSpin', 'kidWiggle'];
-        const randomAnimation = animations[Math.floor(Math.random() * animations.length)];
-        
-        kidSvg.style.animation = `${randomAnimation} 0.8s ease-in-out`;
-        
-        setTimeout(() => {
-            this.animateKidForSection();
-        }, 800);
+    // Pause all running animations
+    pauseAllAnimations() {
+        // This method can be expanded to pause specific animations
+        // For now, it serves as a placeholder for future enhancements
+        console.log('⏸️ Pausing animations (tab hidden)');
     }
     
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
+    // Resume all animations
+    resumeAllAnimations() {
+        // This method can be expanded to resume specific animations
+        // For now, it serves as a placeholder for future enhancements
+        console.log('▶️ Resuming animations (tab visible)');
     }
 }
 
@@ -2119,7 +3950,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize gait visualization when section 6 elements are available
     setTimeout(() => {
         if (document.getElementById('gaitSpeedChart')) {
-            new GaitVisualization();
+            window.gaitViz = new GaitVisualization();
         }
     }, 100);
 }); 

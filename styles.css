@@ -2269,9 +2269,7 @@ body {
     margin-top: 0.4rem; /* Reduced from 0.8rem */
     text-align: center;
     font-style: italic;
-}
-
-/* Mobile Responsive for Compact Growth Trends */
+}/* Mobile Responsive for Compact Growth Trends */
 @media (max-width: 1000px) {
     .trend-main-row {
         grid-template-columns: 1fr;
@@ -2511,3 +2509,297 @@ body {
     font-size: 0.75rem;
     margin-top: 0.4rem;
 }
+
+.stride-visualization-container {
+    display: flex;
+    flex-direction: row;
+    gap: 0.8rem;
+    max-width: 850px;
+    margin: 0.3rem auto;
+    padding: 0.6rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.walker-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.walker-section h3 {
+    color: #ffffff;
+    margin-bottom: 0.2rem;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+.younger-section h3 {
+    color: #4ecdc4;
+    text-shadow: 0 0 15px rgba(76, 205, 196, 0.6);
+}
+
+.older-section h3 {
+    color: #ff6b6b;
+    text-shadow: 0 0 15px rgba(255, 107, 107, 0.6);
+}
+
+.walker-container {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 0.5rem;
+    border-radius: 8px;
+    margin-bottom: 0.4rem;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.walker-container:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ground {
+    width: 100%;
+    height: 65px;
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e0);
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.kid-svg {
+    position: absolute;
+    transform: scale(0.7);
+    transition: transform 0.2s ease-in-out;
+    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.3));
+}
+
+.stats {
+    background: rgba(255, 255, 255, 0.12);
+    padding: 0.4rem;
+    border-radius: 6px;
+    margin-bottom: 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+}
+
+.stats p {
+    margin: 0.15rem 0;
+    display: flex;
+    justify-content: space-between;
+    color: #ffffff;
+    font-size: 0.75rem;
+    line-height: 1.1;
+}
+
+.stat-label {
+    font-weight: 500;
+    color: #e2e8f0;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.2px;
+}
+
+.stat-value {
+    font-weight: 700;
+    color: #4ecdc4;
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 0 4px rgba(76, 205, 196, 0.4);
+    font-size: 0.75rem;
+}
+
+.controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    width: 100%;
+}
+
+.controls select {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-size: 0.75rem;
+    flex-grow: 1;
+    max-width: 160px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.controls select:hover {
+    border-color: rgba(76, 205, 196, 0.5);
+    box-shadow: 0 0 15px rgba(76, 205, 196, 0.2);
+    transform: translateY(-1px);
+}
+
+.controls select:focus {
+    outline: none;
+    border-color: #4ecdc4;
+    box-shadow: 0 0 20px rgba(76, 205, 196, 0.3);
+}
+
+.chart-container {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: 180px;
+}
+
+.chart-container .stride-variability-plot-container {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+}
+
+.chart-container .plot-title {
+    margin-bottom: 0.8rem;
+    text-align: left;
+    font-size: 0.8rem;
+}
+
+.chart-container .small-plot-wrapper {
+    height: 120px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.main-controls {
+    text-align: center;
+    margin: 0.4rem 0;
+    padding: 0.2rem 0;
+}
+
+.main-controls button {
+    padding: 0.4rem 0.8rem;
+    background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(76, 205, 196, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    position: relative;
+    overflow: hidden;
+}
+
+.main-controls button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.main-controls button:hover::before {
+    left: 100%;
+}
+
+.main-controls button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(76, 205, 196, 0.5);
+    background: linear-gradient(45deg, #5dd3cb, #5cc3d8);
+}
+
+/* STRIDE VARIABILITY SMALL PLOTS */
+.stride-variability-plot-container {
+    margin-top: 0.8rem;
+    padding: 0.6rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plot-title {
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin: 0 0 0.4rem 0;
+    text-align: center;
+    opacity: 0.8;
+    letter-spacing: 0.3px;
+}
+
+.small-plot-wrapper {
+    width: 100%;
+    height: 80px;
+    position: relative;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.small-plot-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* Color coding for younger vs older plots */
+.younger-section .stride-variability-plot-container {
+    border-color: rgba(76, 205, 196, 0.15);
+    box-shadow: 0 0 8px rgba(76, 205, 196, 0.08);
+}
+
+.older-section .stride-variability-plot-container {
+    border-color: rgba(255, 107, 107, 0.15);
+    box-shadow: 0 0 8px rgba(255, 107, 107, 0.08);
+}
+
+.younger-section .plot-title {
+    color: #4ecdc4;
+    text-shadow: 0 0 8px rgba(76, 205, 196, 0.3);
+}
+
+.older-section .plot-title {
+    color: #ff6b6b;
+    text-shadow: 0 0 8px rgba(255, 107, 107, 0.3);
+}
+
+/* Responsive design for small plots */
+@media (max-width: 768px) {
+    .stride-variability-plot-container {
+        margin-top: 0.6rem;
+        padding: 0.4rem;
+    }
+    
+    .small-plot-wrapper {
+        height: 60px;
+    }
+    
+    .plot-title {
+        font-size: 0.65rem;
+        margin-bottom: 0.3rem;
+    }
+}
+

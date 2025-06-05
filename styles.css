@@ -141,7 +141,7 @@ body {
 .kid-container {
     position: fixed;
     top: 50%;
-    right: 12%;
+    right: 8%;
     transform: translateY(-50%);
     z-index: 10;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -457,7 +457,7 @@ body {
 
 /* Final section enhancement */
 .final {
-    background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.95));
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -3282,162 +3282,6 @@ body {
     .speed-explanation {
         font-size: 0.85rem;
         margin-top: 0.8rem;
-    }
-}
-
-/* Character Introduction Section Styles */
-.character-comparison {
-    display: flex;
-    justify-content: center;
-    gap: 3rem;
-    margin: 3rem 0;
-    perspective: 1000px;
-    padding: 0 2rem;
-}
-
-.character-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 2rem;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-style: preserve-3d;
-    animation: cardFloat 6s ease-in-out infinite;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    width: 320px;
-}
-
-.character-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-}
-
-.character-info {
-    text-align: center;
-    order: 2;
-}
-
-.character-svg-container {
-    order: 1;
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 180px; /* Increased height to accommodate animation */
-    margin-bottom: 0;
-    padding-top: 20px; /* Add padding to move kids down */
-}
-
-.character-svg-container::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80%;
-    height: 10px;
-    background: radial-gradient(ellipse at center, rgba(255,255,255,0.2) 0%, transparent 70%);
-    filter: blur(5px);
-}
-
-.kid-svg.eight-bit, .kid-svg.sixteen-bit {
-    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
-    transition: all 0.3s ease;
-    transform-origin: bottom center;
-    margin-top: 10px; /* Additional margin to move kids down */
-}
-
-.kid-svg.eight-bit {
-    animation: kidBounce 4s ease-in-out infinite;
-    height: 140px;
-}
-
-.kid-svg.sixteen-bit {
-    animation: kidBounce 4s ease-in-out infinite 0.5s;
-    height: 160px;
-}
-
-.character-card h3 {
-    font-size: 1.8rem;
-    margin-bottom: 1rem;
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.character-card p {
-    font-size: 1.1rem;
-    color: rgba(255, 255, 255, 0.9);
-    line-height: 1.6;
-}
-
-.character-question {
-    text-align: center;
-    margin-top: 3rem;
-    padding: 0 1rem;
-}
-
-.character-question .reveal-text {
-    font-size: 1.4rem;
-    font-weight: 500;
-    color: #fff;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 1s ease-out forwards;
-    animation-delay: 1s;
-}
-
-/* Adjust the hero section kid position */
-.kid-container {
-    right: 12%; /* Move away from scrollbar */
-}
-
-/* Responsive Design for Character Introduction */
-@media (max-width: 768px) {
-    .character-comparison {
-        flex-direction: column;
-        gap: 2rem;
-        align-items: center;
-        padding: 0 1rem;
-    }
-
-    .character-card {
-        width: 100%;
-        max-width: 320px;
-    }
-
-    .character-content {
-        flex-direction: row;
-        text-align: left;
-        gap: 2rem;
-    }
-
-    .character-info {
-        order: 1;
-        flex: 1;
-    }
-
-    .character-svg-container {
-        order: 2;
-        flex: 0 0 auto;
-    }
-
-    .character-card h3 {
-        font-size: 1.5rem;
-    }
-
-    .character-card p {
-        font-size: 1rem;
-    }
-
-    .character-question .reveal-text {
-        font-size: 1.2rem;
     }
 }
 

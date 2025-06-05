@@ -141,7 +141,7 @@ body {
 .kid-container {
     position: fixed;
     top: 50%;
-    right: 8%;
+    right: 12%;
     transform: translateY(-50%);
     z-index: 10;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -457,85 +457,201 @@ body {
 
 /* Final section enhancement */
 .final {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(22, 33, 62, 0.95));
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
-    box-sizing: border-box;
+    padding: 4rem 2rem;
 }
 
-.final .content {
-    max-width: 900px;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 20px;
-    padding: 2rem;
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+.final-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
 }
 
-.final .writeup-section {
-    margin: 0;
-    background: transparent;
-    box-shadow: none;
-    border: none;
-}
-
-.final .writeup-section h3 {
-    font-size: clamp(2rem, 4vw, 2.5rem);
+.final h2 {
+    font-size: 3rem;
+    text-align: center;
     margin-bottom: 2rem;
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    animation: gradientShift 4s ease infinite;
 }
 
-.final .writeup-question {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+.final-summary {
+    background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
+    border-radius: 20px;
+    padding: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.final .writeup-question:hover {
-    transform: translateY(-2px);
-    border-color: rgba(76, 205, 196, 0.3);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+.final-summary h3 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: #fff;
+    text-align: center;
 }
 
-.final .writeup-question h4 {
-    color: #4ecdc4;
-    border-bottom-color: rgba(76, 205, 196, 0.4);
-}
-
-.final .writeup-answer p {
-    color: rgba(255, 255, 255, 0.95);
-}
-
-.final .restart-btn {
+.insight-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
     margin-top: 2rem;
+}
+
+.insight-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: cardFloat 6s ease-in-out infinite;
+}
+
+.insight-card:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
+.insight-card:nth-child(3) {
+    animation-delay: 1s;
+}
+
+.insight-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.insight-card h4 {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+    color: #4ecdc4;
+}
+
+.insight-card p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.final-characters {
+    display: flex;
+    justify-content: center;
+    gap: 4rem;
+    margin: 2rem 0;
+}
+
+.character-final {
+    text-align: center;
+    animation: cardFloat 6s ease-in-out infinite;
+}
+
+.character-final:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
+.character-final p {
+    margin-top: 1rem;
+    font-size: 1.2rem;
+    color: #fff;
+}
+
+.kid-svg.eight-bit-final, .kid-svg.sixteen-bit-final {
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
+    animation: kidBounce 4s ease-in-out infinite;
+}
+
+.kid-svg.sixteen-bit-final {
+    animation-delay: 0.5s;
+}
+
+.final-message {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.final-message .reveal-text {
+    font-size: 1.6rem;
+    color: #fff;
+    margin-bottom: 2rem;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 1s ease-out forwards;
+    animation-delay: 0.5s;
+}
+
+.restart-btn {
     background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
     border: none;
-    padding: 1.2rem 2.5rem;
-    font-size: 1.3rem;
+    padding: 1rem 2rem;
+    font-size: 1.2rem;
     color: white;
-    border-radius: 12px;
+    border-radius: 30px;
     cursor: pointer;
-    transition: all 0.4s ease;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    font-family: 'Courier New', monospace;
     text-transform: uppercase;
-    font-weight: bold;
-    letter-spacing: 2px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    letter-spacing: 1px;
 }
 
-.final .restart-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+.restart-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
     background: linear-gradient(45deg, #ff5252, #45b7d1);
+}
+
+/* Responsive Design for Final Section */
+@media (max-width: 768px) {
+    .final {
+        padding: 2rem 1rem;
+    }
+
+    .final h2 {
+        font-size: 2rem;
+    }
+
+    .final-summary h3 {
+        font-size: 1.6rem;
+    }
+
+    .insight-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .insight-card {
+        padding: 1.2rem;
+    }
+
+    .insight-card h4 {
+        font-size: 1.2rem;
+    }
+
+    .insight-card p {
+        font-size: 1rem;
+    }
+
+    .final-characters {
+        flex-direction: column;
+        gap: 2rem;
+        align-items: center;
+    }
+
+    .final-message .reveal-text {
+        font-size: 1.3rem;
+    }
+
+    .restart-btn {
+        padding: 0.8rem 1.6rem;
+        font-size: 1.1rem;
+    }
 }
 
 /* Mobile responsive enhancements */
@@ -3282,6 +3398,162 @@ body {
     .speed-explanation {
         font-size: 0.85rem;
         margin-top: 0.8rem;
+    }
+}
+
+/* Character Introduction Section Styles */
+.character-comparison {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    margin: 3rem 0;
+    perspective: 1000px;
+    padding: 0 2rem;
+}
+
+.character-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 2rem;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    animation: cardFloat 6s ease-in-out infinite;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    width: 320px;
+}
+
+.character-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.character-info {
+    text-align: center;
+    order: 2;
+}
+
+.character-svg-container {
+    order: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 180px; /* Increased height to accommodate animation */
+    margin-bottom: 0;
+    padding-top: 20px; /* Add padding to move kids down */
+}
+
+.character-svg-container::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 10px;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.2) 0%, transparent 70%);
+    filter: blur(5px);
+}
+
+.kid-svg.eight-bit, .kid-svg.sixteen-bit {
+    filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
+    transition: all 0.3s ease;
+    transform-origin: bottom center;
+    margin-top: 10px; /* Additional margin to move kids down */
+}
+
+.kid-svg.eight-bit {
+    animation: kidBounce 4s ease-in-out infinite;
+    height: 140px;
+}
+
+.kid-svg.sixteen-bit {
+    animation: kidBounce 4s ease-in-out infinite 0.5s;
+    height: 160px;
+}
+
+.character-card h3 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.character-card p {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+}
+
+.character-question {
+    text-align: center;
+    margin-top: 3rem;
+    padding: 0 1rem;
+}
+
+.character-question .reveal-text {
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: #fff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 1s ease-out forwards;
+    animation-delay: 1s;
+}
+
+/* Adjust the hero section kid position */
+.kid-container {
+    right: 12%; /* Move away from scrollbar */
+}
+
+/* Responsive Design for Character Introduction */
+@media (max-width: 768px) {
+    .character-comparison {
+        flex-direction: column;
+        gap: 2rem;
+        align-items: center;
+        padding: 0 1rem;
+    }
+
+    .character-card {
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .character-content {
+        flex-direction: row;
+        text-align: left;
+        gap: 2rem;
+    }
+
+    .character-info {
+        order: 1;
+        flex: 1;
+    }
+
+    .character-svg-container {
+        order: 2;
+        flex: 0 0 auto;
+    }
+
+    .character-card h3 {
+        font-size: 1.5rem;
+    }
+
+    .character-card p {
+        font-size: 1rem;
+    }
+
+    .character-question .reveal-text {
+        font-size: 1.2rem;
     }
 }
 

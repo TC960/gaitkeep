@@ -1477,8 +1477,10 @@ class ScrollytellingEngine {
     
     getSectionTitle(section, index) {
         if (index === 0) return 'Hero';
+        if (index === 1) return 'Intro';
+        if (index === 10) return 'Finale';
         if (section.id === 'finale') return 'Finale';
-        return `Chapter ${index}`;
+        return `Chapter ${index -1}`;
     }
     
     updateProgressIndicator() {

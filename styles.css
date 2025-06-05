@@ -1692,7 +1692,7 @@ body {
 
 /* Age Group Insights - Compact */
 .age-group-insight {
-    margin-top: 1.5rem; /* Reduced margin */
+    margin-top: 10rem; /* Reduced margin */
     padding: 1rem; /* Reduced padding */
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px; /* Reduced border radius */

@@ -1713,6 +1713,86 @@ body {
     text-shadow: 0 0 10px rgba(254, 202, 87, 0.5);
 }
 
+/* Chapter 3: Stats Grid - Horizontal Layout */
+.stats-grid {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.stat-box {
+    flex: 1;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-box:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.stat-box.young-card {
+    border-color: #4ecdc4;
+    box-shadow: 0 0 20px rgba(76, 205, 196, 0.3);
+}
+
+.stat-box.middle-card {
+    border-color: #45b7d1;
+    box-shadow: 0 0 20px rgba(69, 183, 209, 0.3);
+}
+
+.stat-box.old-card {
+    border-color: #ff6b6b;
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+}
+
+.stat-box h3 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.stat-box.young-card h3 {
+    color: #4ecdc4;
+}
+
+.stat-box.middle-card h3 {
+    color: #45b7d1;
+}
+
+.stat-box.old-card h3 {
+    color: #ff6b6b;
+}
+
+.stat-box p {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.5rem;
+}
+
+/* Mobile responsive for stats grid */
+@media (max-width: 768px) {
+    .stats-grid {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .stat-box {
+        padding: 1.2rem;
+    }
+    
+    .stat-box h3 {
+        font-size: 1.2rem;
+    }
+}
+
 /* Comparison Container Styles - Compact */
 .comparison-container {
     width: 100%;

@@ -4998,7 +4998,6 @@ function initializeWalkingSpeedSimulation() {
         age: document.getElementById('age-slider'),
         height: document.getElementById('height-slider'),
         legLength: document.getElementById('leg-length-slider'),
-        weight: document.getElementById('weight-slider'),
         stride: document.getElementById('stride-slider')
     };
 
@@ -5006,7 +5005,6 @@ function initializeWalkingSpeedSimulation() {
         age: document.getElementById('age-value'),
         height: document.getElementById('height-value'),
         legLength: document.getElementById('leg-length-value'),
-        weight: document.getElementById('weight-value'),
         stride: document.getElementById('stride-value')
     };
 

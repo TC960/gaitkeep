@@ -4985,4 +4985,82 @@ document.addEventListener('DOMContentLoaded', () => {
             window.gaitViz = new GaitVisualization();
         }
     }, 100);
+    
+    // Initialize walking speed simulation if we're on chapter 8
+    if (document.getElementById('chapter8')) {
+        initializeWalkingSpeedSimulation();
+    }
 }); 
+
+// Walking Speed Simulation
+function initializeWalkingSpeedSimulation() {
+    const sliders = {
+        age: document.getElementById('age-slider'),
+        height: document.getElementById('height-slider'),
+        legLength: document.getElementById('leg-length-slider'),
+        weight: document.getElementById('weight-slider'),
+        stride: document.getElementById('stride-slider')
+    };
+
+    const valueDisplays = {
+        age: document.getElementById('age-value'),
+        height: document.getElementById('height-value'),
+        legLength: document.getElementById('leg-length-value'),
+        weight: document.getElementById('weight-value'),
+        stride: document.getElementById('stride-value')
+    };
+
+    const speedDisplay = document.getElementById('predicted-speed');
+
+    function updateSpeed() {
+        const age = parseFloat(sliders.age.value);
+        const height = parseFloat(sliders.height.value);
+        const legLength = parseFloat(sliders.legLength.value);
+        const strideInterval = parseFloat(sliders.stride.value);
+
+        // Calculate predicted speed using the provided formula
+        const predicted_speed = 6.853 
+            - 0.03 * age
+            + 0.05 * height 
+            - 0.01 * legLength
+            - 1.51 * Math.log(age) 
+            + 0.93 * Math.sqrt(age)
+            - 1.33 * Math.log(height) 
+            - 2.16 * strideInterval;
+
+        // Update the speed display with 2 decimal places
+        speedDisplay.textContent = predicted_speed.toFixed(2) + ' m/s';
+
+        // Add animation effect
+        speedDisplay.style.animation = 'none';
+        speedDisplay.offsetHeight; // Trigger reflow
+        speedDisplay.style.animation = 'speedPulse 2s ease-in-out infinite';
+    }
+
+    // Initialize all sliders
+    Object.keys(sliders).forEach(key => {
+        const slider = sliders[key];
+        const display = valueDisplays[key];
+
+        // Set initial value
+        display.textContent = slider.value;
+
+        // Add event listeners
+        slider.addEventListener('input', () => {
+            display.textContent = slider.value;
+            updateSpeed();
+        });
+
+        // Add hover effect
+        slider.addEventListener('mouseenter', () => {
+            slider.style.transform = 'scale(1.02)';
+        });
+
+        slider.addEventListener('mouseleave', () => {
+            slider.style.transform = 'scale(1)';
+        });
+    });
+
+    // Calculate initial speed
+    updateSpeed();
+} 

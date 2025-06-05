@@ -157,6 +157,16 @@
                             <label for="youngSelect">Choose subject:</label>
                             <select id="youngSelect"></select>
                         </div>
+                        <div class="stat-box middle-card" id="middleCard">
+                            <h3 style="color: #45b7d1;">Middle Walker</h3>
+                            <div class="walker-info" id="middleInfo">
+                                Age: <span class="stat-value">-</span> months<br>
+                                Speed: <span class="stat-value">-</span> m/s<br>
+                                Leg Length: <span class="stat-value">-</span> inches
+                            </div>
+                            <label for="middleSelect">Choose subject:</label>
+                            <select id="middleSelect"></select>
+                        </div>
                         <div class="stat-box old-card" id="oldCard">
                             <h3 style="color: #ff6b6b;">Old Walker</h3>
                             <div class="walker-info" id="oldInfo">
@@ -178,6 +188,14 @@
                                 </svg>
                             </div>
                         </div>
+                        <div class="walker-item middle-walker">
+                            <h4 style="color: #45b7d1;">Middle Walker</h4>
+                            <div class="ground middle-ground">
+                                <svg class="kid-svg middle" width="120" height="120" viewBox="0 0 120 120">
+                                    <!-- Middle walker SVG content -->
+                                </svg>
+                            </div>
+                        </div>
                         <div class="walker-item old-walker">
                             <h4 style="color: #ff6b6b;">Old Walker</h4>
                             <div class="ground old-ground">
@@ -194,7 +212,7 @@
                 </div>
                 
                 <div class="age-group-insight">
-                    <p><strong>Race Analysis Insight:</strong> Watch how the two age groups demonstrate different speeds and movement patterns. The race reveals fascinating insights about motor development across ages!</p>
+                    <p><strong>Race Analysis Insight:</strong> Watch how the three age groups demonstrate different speeds and movement patterns. The race reveals fascinating insights about motor development across ages!</p>
                 </div>
             </div>
         </section>
@@ -488,7 +506,47 @@
             </div>
         </section>
 
-        <section class="story-section final" id="finale">
+        <!-- New Chapter 8: Walking Speed Simulation -->
+        <section class="story-section" id="chapter8">
+            <div class="content">
+                <h2>Walking Speed Simulation</h2>
+                <div class="simulation-container">
+                    <div class="slider-controls">
+                        <div class="slider-group">
+                            <label for="age-slider">Age (months): <span id="age-value">40</span></label>
+                            <input type="range" id="age-slider" min="40" max="163" value="40" class="slider">
+                        </div>
+                        <div class="slider-group">
+                            <label for="height-slider">Height (inches): <span id="height-value">39</span></label>
+                            <input type="range" id="height-slider" min="39" max="79" value="39" class="slider">
+                        </div>
+                        <div class="slider-group">
+                            <label for="leg-length-slider">Leg Length (inches): <span id="leg-length-value">19.5</span></label>
+                            <input type="range" id="leg-length-slider" min="19.5" max="37" value="19.5" step="0.1" class="slider">
+                        </div>
+                        <div class="slider-group">
+                            <label for="weight-slider">Weight (pounds): <span id="weight-value">30</span></label>
+                            <input type="range" id="weight-slider" min="30" max="143" value="30" class="slider">
+                        </div>
+                        <div class="slider-group">
+                            <label for="stride-slider">Median Stride Interval (m/s): <span id="stride-value">0.84</span></label>
+                            <input type="range" id="stride-slider" min="0.84" max="1.19" value="0.84" step="0.01" class="slider">
+                        </div>
+                    </div>
+                    
+                    <div class="speed-display">
+                        <h3>Predicted Walking Speed</h3>
+                        <div class="speed-value" id="predicted-speed">Calculating...</div>
+                        <div class="speed-explanation">
+                            <p>This simulation uses a mathematical model to predict walking speed based on physical characteristics.</p>
+                            <p>Adjust the sliders to see how different factors affect walking speed!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="story-section final" id="final">
             <div class="content">
                 <h2>The End... Or Is It?</h2>
                 <p>With the quest complete, the 8-bit kid stands transformed. But in the digital realm, every ending is just a new beginning. The adventure continues...</p>

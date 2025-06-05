@@ -1255,7 +1255,7 @@ class ScrollytellingEngine {
     // Reset comparison animation
     resetComparisonAnimation() {
         // Reset race kids
-        const raceKids = ['raceKidYoung', 'raceKidOld'];
+        const raceKids = ['raceKidYoung', 'raceKidMiddle', 'raceKidOld'];
         raceKids.forEach(kidId => {
             const kid = document.getElementById(kidId);
             if (kid) {
@@ -3223,7 +3223,7 @@ class ScrollytellingEngine {
             this.loadRaceSubjectData();
         
         // Initialize race SVGs
-        ['young', 'old'].forEach(ageGroup => {
+        ['young', 'middle', 'old'].forEach(ageGroup => {
             this.initRacerSVG(ageGroup);
         });
         
@@ -3250,6 +3250,7 @@ class ScrollytellingEngine {
         
         const colors = {
             young: '#4ECDC4',
+            middle: '#45B7D1', 
             old: '#FF6B6B'
         };
         
@@ -3296,7 +3297,7 @@ class ScrollytellingEngine {
         }
         
         // Set up subject selection dropdowns for race
-        ['young', 'old'].forEach(ageGroup => {
+        ['young', 'middle', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             if (select) {
                 select.addEventListener('change', (e) => {
@@ -3324,7 +3325,7 @@ class ScrollytellingEngine {
             return;
         }
         
-        ['young', 'old'].forEach(ageGroup => {
+        ['young', 'middle', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             if (!select) {
                 console.error(`❌ Dropdown not found: ${ageGroup}Select`);
@@ -3360,7 +3361,7 @@ class ScrollytellingEngine {
     
     // Auto-select default race subjects
     autoSelectDefaultRaceSubjects() {
-        ['young', 'old'].forEach(ageGroup => {
+        ['young', 'middle', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             if (select && select.options.length > 1) {
                 // Select the first non-empty option (index 1)
@@ -3414,7 +3415,7 @@ class ScrollytellingEngine {
         }
         
         // First, reset all walkers to starting position
-        ['young', 'old'].forEach(ageGroup => {
+        ['young', 'middle', 'old'].forEach(ageGroup => {
             const svg = document.querySelector(`.kid-svg.${ageGroup}`);
             if (svg) {
                 svg.style.transition = 'none';
@@ -3429,7 +3430,7 @@ class ScrollytellingEngine {
         const subjects = {};
         let validSubjectsCount = 0;
         
-        ['young', 'old'].forEach(ageGroup => {
+        ['young', 'middle', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             console.log(`📊 ${ageGroup} select element:`, select);
             console.log(`📊 ${ageGroup} selected value:`, select?.value);
@@ -3535,7 +3536,7 @@ class ScrollytellingEngine {
                 }
                 
                 // Remove racing class and reset positions
-                ['young', 'old'].forEach(ageGroup => {
+                ['young', 'middle', 'old'].forEach(ageGroup => {
                     const svg = document.querySelector(`.kid-svg.${ageGroup}`);
                     if (svg) {
                         svg.classList.remove('racing');
@@ -4984,4 +4985,82 @@ document.addEventListener('DOMContentLoaded', () => {
             window.gaitViz = new GaitVisualization();
         }
     }, 100);
+    
+    // Initialize walking speed simulation if we're on chapter 8
+    if (document.getElementById('chapter8')) {
+        initializeWalkingSpeedSimulation();
+    }
 }); 
+
+// Walking Speed Simulation
+function initializeWalkingSpeedSimulation() {
+    const sliders = {
+        age: document.getElementById('age-slider'),
+        height: document.getElementById('height-slider'),
+        legLength: document.getElementById('leg-length-slider'),
+        weight: document.getElementById('weight-slider'),
+        stride: document.getElementById('stride-slider')
+    };
+
+    const valueDisplays = {
+        age: document.getElementById('age-value'),
+        height: document.getElementById('height-value'),
+        legLength: document.getElementById('leg-length-value'),
+        weight: document.getElementById('weight-value'),
+        stride: document.getElementById('stride-value')
+    };
+
+    const speedDisplay = document.getElementById('predicted-speed');
+
+    function updateSpeed() {
+        const age = parseFloat(sliders.age.value);
+        const height = parseFloat(sliders.height.value);
+        const legLength = parseFloat(sliders.legLength.value);
+        const strideInterval = parseFloat(sliders.stride.value);
+
+        // Calculate predicted speed using the provided formula
+        const predicted_speed = 6.853 
+            - 0.03 * age
+            + 0.05 * height 
+            - 0.01 * legLength
+            - 1.51 * Math.log(age) 
+            + 0.93 * Math.sqrt(age)
+            - 1.33 * Math.log(height) 
+            - 2.16 * strideInterval;
+
+        // Update the speed display with 2 decimal places
+        speedDisplay.textContent = predicted_speed.toFixed(2) + ' m/s';
+
+        // Add animation effect
+        speedDisplay.style.animation = 'none';
+        speedDisplay.offsetHeight; // Trigger reflow
+        speedDisplay.style.animation = 'speedPulse 2s ease-in-out infinite';
+    }
+
+    // Initialize all sliders
+    Object.keys(sliders).forEach(key => {
+        const slider = sliders[key];
+        const display = valueDisplays[key];
+
+        // Set initial value
+        display.textContent = slider.value;
+
+        // Add event listeners
+        slider.addEventListener('input', () => {
+            display.textContent = slider.value;
+            updateSpeed();
+        });
+
+        // Add hover effect
+        slider.addEventListener('mouseenter', () => {
+            slider.style.transform = 'scale(1.02)';
+        });
+
+        slider.addEventListener('mouseleave', () => {
+            slider.style.transform = 'scale(1)';
+        });
+    });
+
+    // Calculate initial speed
+    updateSpeed();
+} 

@@ -54,6 +54,9 @@ class ScrollytellingEngine {
         this.loadGaitData();
         this.startMagneticScrollDetection();
         
+        // Remove automatic variability chart initialization - charts will be created when section 2 is visited
+        // This prevents chart canvas errors when the elements don't exist yet
+        
         // PRELOADING ENHANCEMENT: Preload the first section's data immediately after initialization
         setTimeout(() => {
             this.preloadNextSection(-1); // Preload section 0 (first section after hero)
@@ -99,7 +102,7 @@ class ScrollytellingEngine {
             // Only include records with valid group data
             if (record.Group && record['Speed-m/sec'] && record['height-inches']) {
                 this.gaitData.push({
-                    id: record['subject-id(1-50)'],
+                    id: parseInt(record['subject-id(1-50)']), // Convert to number to match dropdown values
                     age: parseInt(record['age-months']),
                     gender: record.gender,
                     height: parseFloat(record['height-inches']),
@@ -110,18 +113,12 @@ class ScrollytellingEngine {
                 });
             }
         }
+        
+        console.log('📊 Total subjects loaded from CSV:', this.gaitData.length);
+        console.log('🔍 Subject IDs loaded:', this.gaitData.map(s => s.id).sort((a, b) => a - b));
     }
     
-    // Fallback data if CSV loading fails
-    createFallbackData() {
-        console.warn('⚠️  USING MOCK DATA - Real CSV failed to load!');
-        this.gaitData = [
-            { height: 40, speed: 1.04, group: 'young' },
-            { height: 47, speed: 1.32, group: 'middle' },
-            { height: 60, speed: 1.26, group: 'old' }
-        ];
-        console.log('📊 Mock data created:', this.gaitData.length, 'records - USING MOCK DATA ❌');
-    }
+
     
     // Filter data by age group
     getFilteredData(ageGroup = 'all') {
@@ -2318,50 +2315,157 @@ class ScrollytellingEngine {
     
     // NEW ANIMATION METHODS FOR CHAPTERS 2, 3, 4
     
+    // ========================================================================================
+    // CHAPTER 2: STRIDE WALKER ANIMATION - COMPLETE INTEGRATION FROM STANDALONE VERSION
+    // ========================================================================================
+    
+    // Stride Walker State Management (Ported from stride-walker.js)
+    walkerStates = {
+        younger: {
+            strideData: [],
+            isWalking: false,
+            currentStepIndex: 0,
+            lastStepTime: 0,
+            animationFrameId: null,
+            stepCount: 0,
+            elements: null,
+            subject: null,
+            chart: null,
+            stdDev: 0,
+            avgInterval: 0
+        },
+        older: {
+            strideData: [],
+            isWalking: false,
+            currentStepIndex: 0,
+            lastStepTime: 0,
+            animationFrameId: null,
+            stepCount: 0,
+            elements: null,
+            subject: null,
+            chart: null,
+            stdDev: 0,
+            avgInterval: 0
+        }
+    };
+    
+    // Stride Walker Constants
+    strideAgeThreshold = 100; // Threshold in months for older/younger grouping
+    strideSpeedMultiplier = 0.5; // Animation speed multiplier
+    
     // Chapter 2: Stride Walker Animation
     startStrideWalkerAnimation() {
-        console.log('🚶 Starting stride walker animation');
+        console.log('🚶 Starting stride walker animation - Full Integration');
         
-        // Initialize SVGs for both younger and older walkers
-        this.initWalkerSVG('younger');
-        this.initWalkerSVG('older');
-        
-        // Set up event listeners for stride walker controls
-        this.setupStrideWalkerControls();
-        
-        // Load initial subject data
-        this.loadStrideSubjectData();
-        
-        // Initialize stride variability plots
+        // Wait for gait data to be loaded before proceeding
+        const waitForStrideData = () => {
+            if (!this.gaitData || this.gaitData.length === 0) {
+                console.log('⏳ Waiting for gait data to load for stride walker...');
+                setTimeout(waitForStrideData, 100);
+                return;
+            }
+            
+            console.log('✅ Gait data available, proceeding with stride setup');
+            
+            // Process gait data for stride analysis
+            this.processGaitDataForStride();
+            
+            // Initialize walker SVGs
+            this.initStrideWalkerSVG('younger');
+            this.initStrideWalkerSVG('older');
+            
+            // Set up stride walker controls
+            this.setupStrideWalkerControls();
+            
+            // Initialize variability charts for this section
+            this.initializeVariabilityCharts();
+            
+            // Auto-populate stride dropdowns after a short delay
         setTimeout(() => {
             if (this.currentSection === 2) {
-                this.initializeStrideVariabilityPlots();
+                    this.setupStrideSubjectDropdowns();
+                    console.log('🎯 Stride walker setup completed');
             }
         }, 200);
+        };
         
-        // Auto-populate dropdowns and start with default subjects
-        setTimeout(() => {
-            if (this.currentSection === 2) {
-                this.populateStrideDropdowns();
-                this.autoSelectDefaultStrideSubjects();
-            }
-        }, 500);
+        waitForStrideData();
     }
     
-    // Initialize walker SVG for stride animation
-    initWalkerSVG(walkerId) {
-        const svg = document.querySelector(`.kid-svg.${walkerId}`);
-        if (!svg) return;
+    // Process gait data for stride analysis
+    processGaitDataForStride() {
+        // Convert gait data to format expected by stride walker
+        this.strideSubjectData = this.gaitData.map(subject => ({
+            id: subject.id,
+            age: subject.age,
+            gender: subject.gender,
+            height: subject.height,
+            weight: subject.weight,
+            legLength: subject.legLength,
+            speed: subject.speed,
+            group: subject.age >= this.strideAgeThreshold ? 'Older' : 'Younger'
+        }));
         
-        // Set up articulated walker SVG
+        console.log('📊 Processed stride subject data:', this.strideSubjectData.length, 'subjects');
+    }
+    
+    // Helper to get stride walker elements (from stride-walker.js)
+    getStrideWalkerElements(walkerId) {
+        const state = this.walkerStates[walkerId];
+        if (!state) {
+            console.error(`Invalid walkerId: ${walkerId}`);
+            return {};
+        }
+        
+        // Return cached elements if available
+        if (state.elements) {
+            return state.elements;
+        } else {
+            // Query and cache elements
+        const svg = document.querySelector(`.kid-svg.${walkerId}`);
+            const chartCanvas = document.getElementById(`strideVariability${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+            
+            const elements = {
+                svg: svg,
+                currentIntervalEl: document.getElementById(`currentInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`),
+                avgIntervalEl: document.getElementById(`avgInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`),
+                stdDevEl: document.getElementById(`stdDev${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`),
+                stepCountEl: document.getElementById(`stepCount${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`),
+                leftLegGroup: svg ? svg.querySelector('.left-leg') : null,
+                rightLegGroup: svg ? svg.querySelector('.right-leg') : null,
+                leftCalf: svg ? svg.querySelector('.left-leg .calf') : null,
+                rightCalf: svg ? svg.querySelector('.right-leg .calf') : null,
+                chartCanvas: chartCanvas
+            };
+            
+            // Cache the elements
+            state.elements = elements;
+            return elements;
+        }
+    }
+    
+    // Initialize stride walker SVG (from stride-walker.js)
+    initStrideWalkerSVG(walkerId) {
+        console.log(`🎬 Initializing stride walker SVG for ${walkerId}`);
+        const svg = document.querySelector(`.kid-svg.${walkerId}`);
+        const state = this.walkerStates[walkerId];
+
+        if (!svg || !state) {
+            console.error(`Stride walker SVG element or state not found for ${walkerId}!`);
+            return;
+        }
+
+        // Create articulated side-profile walker SVG
         svg.innerHTML = `
             <rect x="40" y="20" width="30" height="30" fill="#FFD700"></rect> <!-- head -->
             <rect x="40" y="50" width="20" height="30" fill="#FF6B6B"></rect> <!-- body -->
+
             <!-- Left leg -->
             <g class="leg left-leg" transform="translate(40,80)">
                 <rect class="thigh" x="0" y="0" width="5" height="15" fill="#4ECDC4"></rect>
                 <rect class="calf" x="0" y="15" width="5" height="15" fill="#4ECDC4"></rect>
             </g>
+
             <!-- Right leg -->
             <g class="leg right-leg" transform="translate(50,80)">
                 <rect class="thigh" x="0" y="0" width="5" height="15" fill="#4ECDC4"></rect>
@@ -2369,25 +2473,408 @@ class ScrollytellingEngine {
             </g>
         `;
         
-        console.log(`🎬 Initialized ${walkerId} walker SVG`);
+        // Cache the DOM elements for this walker
+        this.getStrideWalkerElements(walkerId); // This will cache the elements
+        
+        console.log(`✅ Stride walker SVG initialized for ${walkerId}`);
     }
     
-    // Set up stride walker controls
+    // Load stride data for specific walker and subject (from stride-walker.js)
+    async loadStrideData(walkerId, subjectId) {
+        console.log(`📊 Loading stride data for ${walkerId} walker (subject ${subjectId})`);
+        const walker = this.walkerStates[walkerId];
+        const { avgIntervalEl, stdDevEl } = this.getStrideWalkerElements(walkerId);
+
+        if (!walker || !this.strideSubjectData) {
+            console.error(`Invalid walkerId or subject data not loaded: ${walkerId}`);
+            if (avgIntervalEl) avgIntervalEl.textContent = '-';
+            if (stdDevEl) stdDevEl.textContent = '-';
+            return false;
+        }
+
+        const subject = this.strideSubjectData.find(s => s.id === subjectId);
+        if (!subject) {
+            console.error(`Subject data not found for ID: ${subjectId}`);
+            if (avgIntervalEl) avgIntervalEl.textContent = '-';
+            if (stdDevEl) stdDevEl.textContent = '-';
+            return false;
+        }
+
+        // Store the current subject data in the walker's state
+        walker.subject = subject;
+
+        // Reset data before loading new
+        walker.strideData = [];
+
+        try {
+            // Try to load actual data file: gait-maturation-database-1.0.0/data/{id}-{age}.txt (corrected format)
+            const filename = `${subject.id}-${subject.age}.txt`;
+            const response = await fetch(`gait-maturation-database-1.0.0/data/${filename}`);
+            
+            if (response.ok) {
+                const dataText = await response.text();
+                console.log(`📁 Successfully loaded actual stride data file: ${filename}`);
+                
+                // Parse the actual stride data (time, stride_interval format)
+                const lines = dataText.trim().split('\n');
+                const actualStrideData = [];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line && !line.startsWith('#')) { // Skip comments and empty lines
+                        const [timeStr, strideIntervalStr] = line.split(/\s+/);
+                        const time = parseFloat(timeStr);
+                        const strideInterval = parseFloat(strideIntervalStr);
+                        
+                        if (!isNaN(time) && !isNaN(strideInterval)) {
+                            actualStrideData.push({
+                                time: time,
+                                interval: strideInterval * 1000 // Convert from seconds to milliseconds
+                            });
+                        }
+                    }
+                }
+                
+                if (actualStrideData.length > 0) {
+                    walker.strideData = actualStrideData;
+                    console.log(`✅ Using ${actualStrideData.length} actual stride intervals from ${filename}`);
+                } else {
+                    console.error(`❌ No valid data found in ${filename}`);
+                    return false;
+                }
+            } else {
+                console.error(`❌ File ${filename} not found (${response.status}). Cannot proceed without real participant data.`);
+                return false;
+            }
+        } catch (fetchError) {
+            console.error(`❌ Error loading ${subject.id}-${subject.age}.txt: ${fetchError.message}. Cannot proceed without real participant data.`);
+            return false;
+        }
+
+        if (walker.strideData.length === 0) {
+            console.error(`No valid stride data found for ${walkerId} walker (subject ${subject.id})`);
+            if (avgIntervalEl) avgIntervalEl.textContent = '-';
+            if (stdDevEl) stdDevEl.textContent = '-';
+            if (walker.chart) {
+                walker.chart.destroy();
+                walker.chart = null;
+            }
+            return false;
+        }
+
+        // Calculate and display average interval and standard deviation
+        const intervals = walker.strideData.map(d => d.interval);
+        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        
+        // Calculate standard deviation
+        const stdDev = Math.sqrt(
+            intervals.reduce((sq, n) => sq + Math.pow(n - avgInterval, 2), 0) / intervals.length
+        );
+
+        // Store in walker state for chart use
+        walker.stdDev = stdDev;
+        walker.avgInterval = avgInterval;
+
+        // Update displays
+        if (avgIntervalEl) avgIntervalEl.textContent = avgInterval.toFixed(2) + ' ms';
+        if (stdDevEl) stdDevEl.textContent = stdDev.toFixed(2) + ' ms';
+
+        console.log(`✅ Loaded ${walker.strideData.length} stride intervals for ${walkerId} walker (subject ${subject.id}), avg: ${avgInterval.toFixed(2)}ms, std dev: ${stdDev.toFixed(2)}ms`);
+
+        // Initialize or update chart after data load
+        await this.initializeStrideChart(walkerId);
+
+        return true;
+    }
+    
+    // Initialize Chart.js plot for stride analysis (from stride-walker.js)
+    async initializeStrideChart(walkerId) {
+        console.log(`📈 Initializing stride chart for ${walkerId}`);
+        const walker = this.walkerStates[walkerId];
+        const { chartCanvas } = this.getStrideWalkerElements(walkerId);
+
+        if (!walker || !chartCanvas || !walker.strideData || walker.strideData.length === 0) {
+            console.warn(`Cannot initialize chart for ${walkerId}: missing elements or data.`);
+            if (walker && walker.chart) {
+                walker.chart.destroy();
+                walker.chart = null;
+            }
+            return;
+        }
+
+        // IMPROVED CHART CLEANUP - Fix canvas reuse error
+        // First, destroy the chart stored in walker state
+        if (walker.chart) {
+            walker.chart.destroy();
+            walker.chart = null;
+        }
+        
+        // Then, check for any Chart.js instance attached to this canvas and destroy it
+        const existingChart = Chart.getChart(chartCanvas);
+        if (existingChart) {
+            existingChart.destroy();
+        }
+
+        const ctx = chartCanvas.getContext('2d');
+
+        // Prepare data for Chart.js
+        const chartData = walker.strideData.map((d, index) => ({ x: index + 1, y: d.interval }));
+        const intervals = walker.strideData.map(d => d.interval);
+        const yMin = Math.min(...intervals);
+        const yMax = Math.max(...intervals);
+
+        // Create mean ± std dev band data
+        const mean = walker.avgInterval;
+        const stdDev = walker.stdDev;
+        
+        // Create upper and lower band lines
+        const upperBandData = chartData.map(point => ({ x: point.x, y: mean + stdDev }));
+        const lowerBandData = chartData.map(point => ({ x: point.x, y: mean - stdDev }));
+        const meanLineData = chartData.map(point => ({ x: point.x, y: mean }));
+
+        // Color scheme based on walker type (adapted for main website)
+        const colors = {
+            younger: {
+                line: '#4ecdc4',
+                fill: 'rgba(76, 205, 196, 0.2)',
+                mean: 'rgba(76, 205, 196, 0.6)',
+                band: 'rgba(76, 205, 196, 0.1)',
+                averageLine: '#FF0000' // Bright red for maximum visibility
+            },
+            older: {
+                line: '#ff6b6b', 
+                fill: 'rgba(255, 107, 107, 0.2)',
+                mean: 'rgba(255, 107, 107, 0.6)',
+                band: 'rgba(255, 107, 107, 0.1)',
+                averageLine: '#FF0000' // Bright red for maximum visibility
+            }
+        };
+        
+        const colorScheme = colors[walkerId] || colors.younger;
+        
+        // Create new chart instance
+        walker.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    // Upper band line
+                    label: 'Upper Band',
+                    data: upperBandData,
+                    borderColor: colorScheme.mean,
+                    backgroundColor: 'transparent',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0
+                }, {
+                    // Lower band line  
+                    label: 'Lower Band',
+                    data: lowerBandData,
+                    borderColor: colorScheme.mean,
+                    backgroundColor: colorScheme.band,
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: '-1', // Fill to previous dataset (upper band)
+                    tension: 0
+                }, {
+                    // Mean line
+                    label: 'Average Interval',
+                    data: meanLineData,
+                    borderColor: colorScheme.averageLine,
+                    backgroundColor: 'transparent',
+                    borderWidth: 5,  // Increased thickness from 3 to 5
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0,
+                    order: 1  // Ensure it draws on top
+                }, {
+                    // All stride data points - visible immediately
+                    label: 'Stride Intervals',
+                    data: chartData,
+                    borderColor: colorScheme.line,
+                    backgroundColor: colorScheme.line,
+                    pointRadius: 3,
+                    pointBackgroundColor: colorScheme.line,
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 1,
+                    showLine: true,
+                    borderWidth: 2,
+                    tension: 0.2,
+                    fill: false
+                }, {
+                    // Current Step - single highlighted point (updated during animation)
+                    label: 'Current Step',
+                    data: [], // Will be populated during animation
+                    borderColor: '#ffffff',
+                    backgroundColor: '#ffffff',
+                    pointRadius: 6,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: colorScheme.line,
+                    pointBorderWidth: 3,
+                    showLine: false,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'Stride Index',
+                            color: '#000000',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        beginAtZero: true,
+                        suggestedMin: 0,
+                        suggestedMax: walker.strideData.length > 0 ? walker.strideData.length + 1 : 10,
+                        ticks: {
+                            stepSize: 1,
+                            color: '#000000',
+                            font: { size: 10 }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.2)',
+                            lineWidth: 0.5
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Interval (ms)',
+                            color: '#000000',
+                            font: { size: 12, weight: 'bold' }
+                        },
+                        beginAtZero: false,
+                        suggestedMin: yMin > 0 ? yMin * 0.9 : 0,
+                        suggestedMax: yMax > 0 ? yMax * 1.1 : 1000,
+                        ticks: {
+                            color: '#000000',
+                            font: { size: 10 }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.2)',
+                            lineWidth: 0.5
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        borderColor: colorScheme.line,
+                        borderWidth: 1,
+                        displayColors: false,
+                        callbacks: {
+                            title: function(context) {
+                                if (context[0].datasetIndex === 3) { // Stride data points
+                                    return `Stride ${context[0].parsed.x}`;
+                                }
+                                return '';
+                            },
+                            label: function(context) {
+                                if (context.datasetIndex === 0 || context.datasetIndex === 1) {
+                                    return `Mean ± Std Dev: ${mean.toFixed(2)} ± ${stdDev.toFixed(2)} ms`;
+                                } else if (context.datasetIndex === 2) {
+                                    return `Average: ${mean.toFixed(2)} ms`;
+                                } else if (context.datasetIndex === 3 || context.datasetIndex === 4) {
+                                    return `Interval: ${context.parsed.y.toFixed(2)} ms`;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        console.log(`✅ Chart initialized for ${walkerId} with ${walker.strideData.length} data points visible`);
+    }
+    
+    // Update stride plot to highlight current step during animation (from stride-walker.js)
+    updateStridePlot(walkerId, stepIndex) {
+        const walker = this.walkerStates[walkerId];
+        if (!walker || !walker.chart || !walker.strideData || walker.strideData.length === 0) {
+            return;
+        }
+
+        // Get the current stride data point
+        const currentPoint = stepIndex < walker.strideData.length ? 
+            { x: stepIndex + 1, y: walker.strideData[stepIndex].interval } : null;
+        
+        // Update current step dataset (highlighted point) - dataset index 4
+        walker.chart.data.datasets[4].data = currentPoint ? [currentPoint] : [];
+
+        // Update the chart
+        walker.chart.update('none'); // Use 'none' mode for better performance during animation
+    }
+    
+    // Helper function to set leg transform (from stride-walker.js)
+    setStrideLegTransform(legGroup, calf, hipAngle, kneeAngle) {
+        if (!legGroup || !calf) return;
+        
+        // Apply rotation at the hip
+        legGroup.setAttribute('transform', `translate(${parseFloat(legGroup.getAttribute('transform').split('(')[1].split(',')[0])},80) rotate(${hipAngle})`);
+        
+        // Apply rotation at the knee
+        calf.setAttribute('transform', `translate(0,15) rotate(${kneeAngle}) translate(0,-15)`);
+    }
+    
+    // Take a single step (animate legs) for specific walker (from stride-walker.js)
+    takeStrideStep(walkerId) {
+        const walker = this.walkerStates[walkerId];
+        const { leftLegGroup, rightLegGroup, leftCalf, rightCalf } = this.getStrideWalkerElements(walkerId);
+
+        if (!leftLegGroup || !rightLegGroup || !leftCalf || !rightCalf) {
+            console.error(`Leg group or calf elements not found for ${walkerId} animation!`);
+            return;
+        }
+
+        // Animate legs using rotation based on step count
+        const hipRotationForward = 15; // Hip rotation angle for forward swing
+        const hipRotationBackward = -5; // Hip rotation angle for backward swing
+        const kneeRotationBend = -20; // Knee rotation angle for bending
+        const kneeRotationStraight = 0; // Knee rotation angle for straight
+
+        if (walker.stepCount % 2 === 0) {
+            // Step 1: Left leg forward swing, Right leg backward swing
+            this.setStrideLegTransform(leftLegGroup, leftCalf, hipRotationForward, kneeRotationBend);
+            this.setStrideLegTransform(rightLegGroup, rightCalf, hipRotationBackward, kneeRotationStraight);
+        } else {
+            // Step 2: Right leg forward swing, Left leg backward swing
+            this.setStrideLegTransform(leftLegGroup, leftCalf, hipRotationBackward, kneeRotationStraight);
+            this.setStrideLegTransform(rightLegGroup, rightCalf, hipRotationForward, kneeRotationBend);
+        }
+
+        // Update the stride plot to highlight current step
+        this.updateStridePlot(walkerId, walker.currentStepIndex);
+    }
+    
+    // Setup stride walker controls (from stride-walker.js adapted)
     setupStrideWalkerControls() {
         const startButton = document.getElementById('startButton');
         if (startButton) {
-            console.log('✅ Found start button, attaching event listener');
+            console.log('✅ Found stride start button, attaching event listener');
             
             // Remove any existing event listeners
             startButton.removeEventListener('click', this.toggleStrideWalking);
             
             // Add new event listener
             startButton.addEventListener('click', () => {
-                console.log('🔘 Start button clicked');
+                console.log('🔘 Stride start button clicked');
                 this.toggleStrideWalking();
             });
         } else {
-            console.error('❌ Start button not found with ID: startButton');
+            console.error('❌ Stride start button not found with ID: startButton');
         }
         
         // Set up subject selection dropdowns
@@ -2404,425 +2891,291 @@ class ScrollytellingEngine {
         });
     }
     
-    // Load stride subject data
-    loadStrideSubjectData() {
-        // Use existing gait data to populate stride subjects
-        if (!this.gaitData || this.gaitData.length === 0) {
-            console.warn('⚠️ No gait data available for stride subjects');
+    // Setup stride subject dropdowns (from stride-walker.js adapted)
+    async setupStrideSubjectDropdowns() {
+        console.log('📝 Setting up stride subject dropdowns');
+
+        if (!this.strideSubjectData || this.strideSubjectData.length === 0) {
+            console.warn('No stride subject data available to populate dropdowns.');
             return;
         }
-        
-        // Store stride data reference
-        this.strideSubjects = this.gaitData;
-        console.log('📊 Loaded stride subject data:', this.strideSubjects.length, 'subjects');
-    }
-    
-    // Populate stride dropdowns
-    populateStrideDropdowns() {
-        if (!this.strideSubjects) return;
-        
+
+        const olderSubjects = this.strideSubjectData.filter(s => s.group === 'Older');
+        const youngerSubjects = this.strideSubjectData.filter(s => s.group === 'Younger');
+
+        // Setup younger subjects dropdown
         const youngerSelect = document.getElementById('subjectSelectYounger');
-        const olderSelect = document.getElementById('subjectSelectOlder');
-        
         if (youngerSelect) {
-            youngerSelect.innerHTML = '<option value="">Choose subject...</option>';
-            this.strideSubjects.filter(s => s.group === 'young').forEach(subject => {
-                const option = document.createElement('option');
-                option.value = subject.id;
-                option.textContent = `Subject ${subject.id} (${subject.age} months, ${subject.speed.toFixed(2)} m/s)`;
-                youngerSelect.appendChild(option);
-            });
+            youngerSelect.innerHTML = youngerSubjects.map(s => 
+                `<option value="${s.id}" data-age="${s.age}">${s.id}: Age ${s.age}</option>`
+            ).join('');
+            
+            // Always select the first available subject
+            if (youngerSubjects.length > 0) {
+                youngerSelect.value = youngerSubjects[0].id.toString();
+                console.log(`📋 Selected first younger subject: ${youngerSubjects[0].id}`);
+            }
         }
-        
-        if (olderSelect) {
-            olderSelect.innerHTML = '<option value="">Choose subject...</option>';
-            this.strideSubjects.filter(s => s.group === 'old').forEach(subject => {
-                const option = document.createElement('option');
-                option.value = subject.id;
-                option.textContent = `Subject ${subject.id} (${subject.age} months, ${subject.speed.toFixed(2)} m/s)`;
-                olderSelect.appendChild(option);
-            });
-        }
-    }
-    
-    // Auto-select default stride subjects
-    autoSelectDefaultStrideSubjects() {
-        const youngerSelect = document.getElementById('subjectSelectYounger');
+
+        // Setup older subjects dropdown
         const olderSelect = document.getElementById('subjectSelectOlder');
-        
-        if (youngerSelect && youngerSelect.options.length > 1) {
-            youngerSelect.selectedIndex = 1; // Select first available subject
-            this.onStrideSubjectChange('younger', parseInt(youngerSelect.value));
+        if (olderSelect) {
+            olderSelect.innerHTML = olderSubjects.map(s => 
+                `<option value="${s.id}" data-age="${s.age}">${s.id}: Age ${s.age}</option>`
+            ).join('');
+            
+            // Always select the first available subject
+            if (olderSubjects.length > 0) {
+                olderSelect.value = olderSubjects[0].id.toString();
+                console.log(`📋 Selected first older subject: ${olderSubjects[0].id}`);
+            }
         }
-        
-        if (olderSelect && olderSelect.options.length > 1) {
-            olderSelect.selectedIndex = 1; // Select first available subject
-            this.onStrideSubjectChange('older', parseInt(olderSelect.value));
+
+        // Load initial data for default selected subjects
+        if (youngerSelect && youngerSelect.value) {
+            const initialYoungerSubjectId = parseInt(youngerSelect.value);
+            console.log(`📊 Loading initial data for younger subject: ${initialYoungerSubjectId}`);
+            await this.loadStrideData('younger', initialYoungerSubjectId);
         }
+
+        if (olderSelect && olderSelect.value) {
+            const initialOlderSubjectId = parseInt(olderSelect.value);
+            console.log(`📊 Loading initial data for older subject: ${initialOlderSubjectId}`);
+            await this.loadStrideData('older', initialOlderSubjectId);
+        }
+
+        // Update start button state
+        this.updateStrideStartButtonState();
+
+        console.log('✅ Stride subject dropdowns setup complete.');
     }
     
-    // Handle stride subject change
-    onStrideSubjectChange(walkerId, subjectId) {
-        const subject = this.strideSubjects.find(s => s.id === subjectId);
-        if (!subject) return;
+    // Handle stride subject change (from stride-walker.js adapted)
+    async onStrideSubjectChange(walkerId, subjectId) {
+        console.log(`👤 ${walkerId} subject selected: ID ${subjectId}`);
         
-        // Update stats display
-        const currentIntervalEl = document.getElementById(`currentInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
-        const avgIntervalEl = document.getElementById(`avgInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
-        const stdDevEl = document.getElementById(`stdDev${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
+        // Stop current animation for this walker
+        this.stopStrideWalking(walkerId);
         
-        if (currentIntervalEl) currentIntervalEl.textContent = '-';
-        if (avgIntervalEl) avgIntervalEl.textContent = `${(600 + Math.random() * 200).toFixed(0)}`;
-        if (stdDevEl) stdDevEl.textContent = `${(50 + Math.random() * 30).toFixed(0)}`;
+        // Load new data and re-initialize walker display
+        const success = await this.loadStrideData(walkerId, subjectId);
         
-        // Reset and reinitialize the plot with subject-specific parameters
-        this.resetSubjectSpecificPlot(walkerId, subject);
-        
-        console.log(`📊 Selected ${walkerId} subject:`, subject.id, subject.speed.toFixed(2), 'm/s');
+        // Update start button state after loading new data
+        this.updateStrideStartButtonState();
     }
     
-    // Reset and reinitialize plot for specific subject
-    resetSubjectSpecificPlot(walkerId, subject) {
-        // Stop any existing real-time updates
-        this.stopRealTimeVariabilityPlot(walkerId);
-        
-        // Store subject-specific parameters for this walker
-        this[`${walkerId}CurrentSubject`] = subject;
-        
-        // If walking is currently active, restart the plot with new subject parameters
+    // Toggle stride walking (from stride-walker.js adapted)
+    toggleStrideWalking() {
+        console.log('🔄 Toggle stride walking');
+        const olderWalker = this.walkerStates.older;
+        const youngerWalker = this.walkerStates.younger;
+
+        const isCurrentlyWalking = olderWalker.isWalking || youngerWalker.isWalking;
+
+        if (isCurrentlyWalking) {
+            console.log('⏸️ Stopping stride walk for both');
+            this.stopStrideWalking('older');
+            this.stopStrideWalking('younger');
         const startButton = document.getElementById('startButton');
-        if (startButton && startButton.textContent.includes('Pause')) {
-            // Reinitialize plot with subject-specific parameters
-            this.initializeRealTimeVariabilityPlot(walkerId);
-            this.startSubjectSpecificAnimation(walkerId, subject);
+            if (startButton) startButton.textContent = 'Start Walking';
         } else {
-            // Just initialize the empty plot for when walking starts
-            this.initializeRealTimeVariabilityPlot(walkerId);
+            // Only start if both have data
+            if (!olderWalker.strideData || olderWalker.strideData.length === 0 || 
+                !youngerWalker.strideData || youngerWalker.strideData.length === 0) {
+                console.warn('Cannot start stride walking: Data not loaded for one or both walkers.');
+            return;
+        }
+            console.log('▶️ Starting stride walk for both');
+            const startButton = document.getElementById('startButton');
+            if (startButton) startButton.textContent = 'Pause Walking';
+
+            // Start both animations
+            this.startStrideWalking('older');
+            this.startStrideWalking('younger');
         }
     }
     
-    // Start subject-specific animation
-    startSubjectSpecificAnimation(walkerId, subject) {
-        // Generate subject-specific variability parameters
-        const baseStdDev = this.calculateSubjectBaseStdDev(subject);
-        const variabilityRange = this.calculateSubjectVariabilityRange(subject);
-        
-        let stepCount = this[`${walkerId}StrideCount`] || 0;
-        
-        const stepInterval = setInterval(() => {
-            if (this.currentSection !== 2) {
-                clearInterval(stepInterval);
+    // Start stride walking for specific walker (from stride-walker.js adapted)
+    startStrideWalking(walkerId) {
+        const walker = this.walkerStates[walkerId];
+        const { stepCountEl, currentIntervalEl } = this.getStrideWalkerElements(walkerId);
+
+        if (!walker || !walker.strideData || walker.strideData.length === 0) {
+            console.error(`No stride data available to start walking for ${walkerId}.`);
+            return;
+        }
+
+        console.log(`🏃 Starting stride walk animation for ${walkerId}`);
+        walker.isWalking = true;
+
+        // Reset state when starting
+        walker.stepCount = 0;
+        walker.currentStepIndex = 0;
+        walker.lastStepTime = performance.now();
+
+        if (stepCountEl) stepCountEl.textContent = walker.stepCount;
+        if (currentIntervalEl) currentIntervalEl.textContent = '-';
+
+        // Take first step immediately and update plot
+        this.takeStrideStep(walkerId);
+        this.updateStridePlot(walkerId, walker.currentStepIndex);
+
+        walker.animationFrameId = requestAnimationFrame((ts) => this.animateStrideWalker(walkerId, ts));
+    }
+    
+    // Animate stride walker based on stride data (from stride-walker.js adapted)
+    animateStrideWalker(walkerId, timestamp) {
+        const walker = this.walkerStates[walkerId];
+        const { currentIntervalEl, stepCountEl } = this.getStrideWalkerElements(walkerId);
+
+        if (!walker || !walker.isWalking || !walker.strideData || walker.strideData.length === 0) {
+            return;
+        }
+
+        // Get current stride data
+        let activeStride = walker.strideData[walker.currentStepIndex];
+        if (!activeStride) {
+            console.log(`${walkerId} No more stride data, looping`);
+            walker.currentStepIndex = 0; // Loop back to the beginning
+            activeStride = walker.strideData[walker.currentStepIndex];
+            if (!activeStride) {
+                console.error(`Error: No stride data available for ${walkerId} after attempting loop.`);
+                this.stopStrideWalking(walkerId);
                 return;
             }
-            
-            stepCount++;
-            this[`${walkerId}StrideCount`] = stepCount;
-            
-            // Generate subject-specific stride variability
-            const currentStdDev = this.generateSubjectSpecificStdDev(subject, stepCount, baseStdDev, variabilityRange);
-            
-            // Add point to real-time plot
-            this.addRealTimeVariabilityPoint(walkerId, currentStdDev);
-            
-            // Update stats
-            this.updateStrideStats(walkerId, stepCount, currentStdDev);
-            
-        }, 1500);
-        
-        // Store interval for cleanup
-        this.addSectionInterval('section2', stepInterval);
-        this[`${walkerId}VariabilityInterval`] = stepInterval;
-    }
-    
-    // Calculate subject-specific base standard deviation
-    calculateSubjectBaseStdDev(subject) {
-        // Base variability on age and speed characteristics
-        const ageGroup = subject.group;
-        const speed = subject.speed;
-        const age = subject.age;
-        
-        // Younger subjects and slower speeds tend to have higher variability
-        let baseStdDev;
-        if (ageGroup === 'young') {
-            baseStdDev = 70 - (speed * 10); // Slower young children more variable
-        } else if (ageGroup === 'middle') {
-            baseStdDev = 50 - (speed * 8);
-        } else {
-            baseStdDev = 35 - (speed * 5); // Older children more consistent
         }
-        
-        // Add age-specific adjustment
-        baseStdDev += (60 - age) * 0.3; // Younger age = more variability
-        
-        return Math.max(15, Math.min(80, baseStdDev)); // Clamp between realistic bounds
-    }
-    
-    // Calculate subject-specific variability range
-    calculateSubjectVariabilityRange(subject) {
-        const ageGroup = subject.group;
-        const speed = subject.speed;
-        
-        // Range of variation around base
-        let range;
-        if (ageGroup === 'young') {
-            range = 25 - (speed * 3); // Faster young children more consistent
-        } else if (ageGroup === 'middle') {
-            range = 20 - (speed * 2);
-        } else {
-            range = 15 - (speed * 1);
+
+        // Update current interval display
+        if (currentIntervalEl) currentIntervalEl.textContent = activeStride.interval.toFixed(2) + ' ms';
+
+        // Check if it's time for the next step
+        if (timestamp - walker.lastStepTime >= activeStride.interval * this.strideSpeedMultiplier) {
+            console.log(`${walkerId} Taking step ${walker.stepCount + 1} with interval ${activeStride.interval.toFixed(2)}ms`);
+            
+            // Take a step (animate legs)
+            this.takeStrideStep(walkerId);
+            walker.lastStepTime = timestamp;
+            walker.currentStepIndex = (walker.currentStepIndex + 1) % walker.strideData.length;
+            walker.stepCount++;
+            if (stepCountEl) stepCountEl.textContent = walker.stepCount;
         }
-        
-        return Math.max(5, Math.min(30, range));
+
+        // Continue animation
+        walker.animationFrameId = requestAnimationFrame((ts) => this.animateStrideWalker(walkerId, ts));
     }
     
-    // Generate subject-specific stride variability at a given step
-    generateSubjectSpecificStdDev(subject, stepCount, baseStdDev, variabilityRange) {
-        // Create realistic patterns based on subject characteristics
-        const progress = (stepCount % 12) / 12; // 12-step cycles for natural variation
-        
-        // Sinusoidal trend component (natural gait patterns)
-        const trendComponent = baseStdDev + (variabilityRange * Math.sin(progress * Math.PI * 2));
-        
-        // Add fatigue effect (slight increase in variability over time)
-        const fatigueEffect = stepCount * 0.2;
-        
-        // Random noise (more for younger, less for older)
-        const noiseRange = subject.group === 'young' ? 15 : subject.group === 'middle' ? 10 : 5;
-        const randomComponent = (Math.random() - 0.5) * noiseRange;
-        
-        const currentStdDev = trendComponent + fatigueEffect + randomComponent;
-        
-        return Math.max(10, Math.min(100, currentStdDev)); // Realistic bounds
-    }
-    
-    // Update stride statistics display
-    updateStrideStats(walkerId, stepCount, currentStdDev) {
-        const stepCountEl = document.getElementById(`stepCount${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
-        const currentIntervalEl = document.getElementById(`currentInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
-        const stdDevEl = document.getElementById(`stdDev${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
-        
-        if (stepCountEl) stepCountEl.textContent = stepCount;
-        
-        // Generate realistic current interval with some randomness
-        const interval = 500 + Math.random() * 300;
-        if (currentIntervalEl) {
-            currentIntervalEl.textContent = `${interval.toFixed(0)}`;
+    // Stop stride walking for specific walker (from stride-walker.js adapted)
+    stopStrideWalking(walkerId) {
+        console.log(`⏹️ Stopping stride walk animation for ${walkerId}`);
+        const walker = this.walkerStates[walkerId];
+        const { svg, currentIntervalEl } = this.getStrideWalkerElements(walkerId);
+
+        if (!walker) return;
+
+        walker.isWalking = false;
+        if (walker.animationFrameId) {
+            cancelAnimationFrame(walker.animationFrameId);
+            walker.animationFrameId = null;
         }
-        
-        if (stdDevEl) {
-            stdDevEl.textContent = `${currentStdDev.toFixed(0)}`;
+
+        // Reset leg positions to neutral stance
+        if (svg) {
+            const leftLegGroup = svg.querySelector('.left-leg');
+            const rightLegGroup = svg.querySelector('.right-leg');
+            const leftCalf = leftLegGroup ? leftLegGroup.querySelector('.calf') : null;
+            const rightCalf = rightLegGroup ? rightLegGroup.querySelector('.calf') : null;
+
+            if (leftLegGroup) leftLegGroup.setAttribute('transform', 'translate(40,80) rotate(0)');
+            if (rightLegGroup) rightLegGroup.setAttribute('transform', 'translate(50,80) rotate(0)');
+            if (leftCalf) leftCalf.setAttribute('transform', 'translate(0,0)');
+            if (rightCalf) rightCalf.setAttribute('transform', 'translate(0,0)');
+        }
+
+        // Reset state variables
+        walker.stepCount = 0;
+        walker.currentStepIndex = 0;
+        walker.lastStepTime = 0;
+
+        // Reset current interval display
+        if (currentIntervalEl) currentIntervalEl.textContent = '-';
+
+        // Remove chart highlighting when stopped
+        if (walker.chart) {
+            walker.chart.data.datasets[4].data = []; // Clear current step highlight
+            walker.chart.update();
         }
     }
     
-    // Generate mock stride variability data for a subject
-    generateStrideVariabilityData(subject) {
-        const numStrides = 20; // Number of stride intervals to show
-        const baseInterval = 600 + (subject.speed * 100); // Base interval in ms
-        const stdDevRange = subject.group === 'young' ? [40, 80] : [20, 50]; // Younger subjects more variable
-        
-        const data = [];
-        for (let i = 0; i < numStrides; i++) {
-            // Generate mock standard deviation that varies over time
-            const progress = i / (numStrides - 1);
-            const baseStdDev = stdDevRange[0] + (stdDevRange[1] - stdDevRange[0]) * 
-                             (0.5 + 0.3 * Math.sin(progress * Math.PI * 2) + 0.2 * Math.random());
-            
-            data.push({
-                stride: i + 1,
-                stdDev: Math.max(10, baseStdDev) // Ensure minimum standard deviation
-            });
-        }
-        
-        return data;
-    }
-    
-    // Create or update stride variability plot
-    updateStrideVariabilityPlot(walkerId, subject) {
-        const canvasId = `strideVariability${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`;
-        const canvas = document.getElementById(canvasId);
-        
-        if (!canvas) {
-            console.warn(`Canvas not found: ${canvasId}`);
-            return;
-        }
-        
-        // Destroy existing chart if it exists
-        const chartKey = `${walkerId}VariabilityChart`;
-        if (this[chartKey]) {
-            this[chartKey].destroy();
-        }
-        
-        // Generate mock data for this subject
-        const data = this.generateStrideVariabilityData(subject);
-        
-        // Create color scheme based on walker type
-        const colors = {
-            younger: {
-                line: '#4ecdc4',
-                fill: 'rgba(76, 205, 196, 0.1)',
-                grid: 'rgba(76, 205, 196, 0.2)'
-            },
-            older: {
-                line: '#ff6b6b', 
-                fill: 'rgba(255, 107, 107, 0.1)',
-                grid: 'rgba(255, 107, 107, 0.2)'
-            }
-        };
-        
-        const colorScheme = colors[walkerId] || colors.younger;
-        
-        // Create new chart
-        this[chartKey] = new Chart(canvas, {
-            type: 'line',
-            data: {
-                labels: data.map(d => d.stride),
-                datasets: [{
-                    data: data.map(d => d.stdDev),
-                    borderColor: colorScheme.line,
-                    backgroundColor: colorScheme.fill,
-                    borderWidth: 1.5,
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 0,
-                    pointHoverRadius: 2,
-                    pointBackgroundColor: colorScheme.line,
-                    pointBorderColor: '#ffffff',
-                    pointBorderWidth: 0.5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        enabled: true,
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                        titleColor: '#ffffff',
-                        bodyColor: '#ffffff',
-                        borderColor: colorScheme.line,
-                        borderWidth: 1,
-                        displayColors: false,
-                        callbacks: {
-                            title: function(context) {
-                                return `Stride ${context[0].label}`;
-                            },
-                            label: function(context) {
-                                return `Std Dev: ${context.parsed.y.toFixed(1)} ms`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        display: true,
-                        title: {
-                            display: false
-                        },
-                        grid: {
-                            display: true,
-                            color: colorScheme.grid,
-                            lineWidth: 0.5
-                        },
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.6)',
-                            font: {
-                                size: 9
-                            },
-                            maxTicksLimit: 6
-                        }
-                    },
-                    y: {
-                        display: true,
-                        title: {
-                            display: false
-                        },
-                        grid: {
-                            display: true,
-                            color: colorScheme.grid,
-                            lineWidth: 0.5
-                        },
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.6)',
-                            font: {
-                                size: 9
-                            },
-                            maxTicksLimit: 4,
-                            callback: function(value) {
-                                return value.toFixed(0);
-                            }
-                        }
-                    }
-                },
-                elements: {
-                    point: {
-                        hoverRadius: 3
-                    }
-                }
-            }
-        });
-        
-        console.log(`📈 Updated ${walkerId} stride variability plot for subject ${subject.id}`);
-    }
-    
-    // Initialize stride variability plots with default data
-    initializeStrideVariabilityPlots() {
-        // Create default plots for both walkers
-        ['younger', 'older'].forEach(walkerId => {
-            const defaultSubject = {
-                id: walkerId === 'younger' ? 'default_young' : 'default_old',
-                speed: walkerId === 'younger' ? 1.1 : 1.3,
-                group: walkerId === 'younger' ? 'young' : 'old'
-            };
-            
-            this.updateStrideVariabilityPlot(walkerId, defaultSubject);
-        });
-    }
-    
-    // Toggle stride walking animation
-    toggleStrideWalking() {
-        console.log('🔄 Toggle stride walking called');
-        
+    // Update stride start button state (from stride-walker.js adapted)
+    updateStrideStartButtonState() {
+        const olderWalker = this.walkerStates.older;
+        const youngerWalker = this.walkerStates.younger;
         const startButton = document.getElementById('startButton');
-        if (!startButton) {
-            console.error('❌ Start button not found in toggle function');
-            return;
-        }
-        
-        const isWalking = startButton.textContent.includes('Pause');
-        console.log('📊 Current walking state:', isWalking);
-        
-        if (isWalking) {
-            startButton.textContent = 'START WALKING';
-            this.stopStrideWalking();
+
+        if (startButton) {
+            if (olderWalker.strideData.length > 0 && youngerWalker.strideData.length > 0) {
+                startButton.disabled = false;
+                startButton.textContent = 'Start Walking';
         } else {
-            startButton.textContent = 'PAUSE WALKING';
-            this.startStrideWalking();
+                startButton.disabled = true;
+                startButton.textContent = 'Loading Data...';
+            }
         }
     }
     
-    // Reset stride walker animation
+    // Reset stride walker animation (adapted for scrollytelling)
     resetStrideWalkerAnimation() {
-        // Reset SVGs
+        // Stop variability visualization first to prevent canvas DOM errors
+        this.pauseVariabilityVisualization();
+        
+        // Destroy variability charts completely
+        if (this.variabilityState.charts.younger) {
+            try {
+                this.variabilityState.charts.younger.destroy();
+            } catch (error) {
+                console.warn('Error destroying younger variability chart:', error);
+            }
+            this.variabilityState.charts.younger = null;
+        }
+        
+        if (this.variabilityState.charts.older) {
+            try {
+                this.variabilityState.charts.older.destroy();
+            } catch (error) {
+                console.warn('Error destroying older variability chart:', error);
+            }
+            this.variabilityState.charts.older = null;
+        }
+        
+        // Reset both walkers
         ['younger', 'older'].forEach(walkerId => {
+            const walker = this.walkerStates[walkerId];
             const svg = document.querySelector(`.kid-svg.${walkerId}`);
+            
             if (svg) {
                 svg.style.animation = '';
                 svg.style.transform = 'scale(0.7)'; // Match CSS scale
                 svg.innerHTML = ''; // Clear SVG content
             }
             
-            // Clear current subject data
-            this[`${walkerId}CurrentSubject`] = null;
-            this[`${walkerId}StrideCount`] = 0;
+            // Stop walking animation
+            this.stopStrideWalking(walkerId);
             
-            // Reset stats
+            // Clear walker state
+            if (walker) {
+                walker.subject = null;
+                walker.strideData = [];
+                walker.stepCount = 0;
+                walker.elements = null; // Clear cached elements
+                
+                // Destroy chart
+                if (walker.chart) {
+                    walker.chart.destroy();
+                    walker.chart = null;
+                }
+            }
+            
+            // Reset stats displays
             const currentIntervalEl = document.getElementById(`currentInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
             const avgIntervalEl = document.getElementById(`avgInterval${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
             const stdDevEl = document.getElementById(`stdDev${walkerId.charAt(0).toUpperCase() + walkerId.slice(1)}`);
@@ -2832,13 +3185,6 @@ class ScrollytellingEngine {
             if (avgIntervalEl) avgIntervalEl.textContent = '-';
             if (stdDevEl) stdDevEl.textContent = '-';
             if (stepCountEl) stepCountEl.textContent = '0';
-            
-            // Destroy variability charts
-            const chartKey = `${walkerId}VariabilityChart`;
-            if (this[chartKey]) {
-                this[chartKey].destroy();
-                this[chartKey] = null;
-            }
         });
         
         // Reset dropdowns
@@ -2853,14 +3199,28 @@ class ScrollytellingEngine {
         const startButton = document.getElementById('startButton');
         if (startButton) {
             startButton.textContent = 'Start Walking';
+            startButton.disabled = false;
         }
         
-        console.log('🔄 Reset stride walker animation');
+        console.log('🔄 Reset stride walker animation completely');
     }
     
     // Chapter 3: Comparison Race Animation
     startComparisonRaceAnimation() {
         console.log('🏁 Starting comparison race animation');
+        
+        // Wait for gait data to be loaded before proceeding
+        const waitForData = () => {
+            if (!this.gaitData || this.gaitData.length === 0) {
+                console.log('⏳ Waiting for gait data to load...');
+                setTimeout(waitForData, 100);
+                return;
+            }
+            
+            console.log('✅ Gait data available, proceeding with race setup');
+            
+            // Load race subject data
+            this.loadRaceSubjectData();
         
         // Initialize race SVGs
         ['young', 'middle', 'old'].forEach(ageGroup => {
@@ -2870,16 +3230,17 @@ class ScrollytellingEngine {
         // Set up race controls
         this.setupRaceControls();
         
-        // Load race subject data
-        this.loadRaceSubjectData();
-        
-        // Auto-populate race dropdowns
+            // Auto-populate race dropdowns after a short delay to ensure DOM readiness
         setTimeout(() => {
             if (this.currentSection === 3) {
                 this.populateRaceDropdowns();
                 this.autoSelectDefaultRaceSubjects();
+                    console.log('🎯 Race setup completed');
             }
-        }, 500);
+            }, 200);
+        };
+        
+        waitForData();
     }
     
     // Initialize racer SVG
@@ -2893,12 +3254,34 @@ class ScrollytellingEngine {
             old: '#FF6B6B'
         };
         
-        // Set up racer SVG
+        // Reset position and styles
+        svg.style.left = '0%';
+        svg.style.transition = '';
+        svg.classList.remove('racing');
+        
+        // Create detailed walker SVG with head, body, arms, and legs
         svg.innerHTML = `
-            <rect x="35" y="20" width="30" height="30" fill="#FFD700"></rect>
-            <rect x="40" y="50" width="20" height="30" fill="${colors[ageGroup]}"></rect>
-            <rect x="35" y="80" width="10" height="20" fill="${colors[ageGroup]}"></rect>
-            <rect x="55" y="80" width="10" height="20" fill="${colors[ageGroup]}"></rect>
+            <!-- Head -->
+            <rect x="40" y="10" width="40" height="40" fill="#FFD700" rx="20"></rect>
+            <!-- Hair -->
+            <rect x="35" y="5" width="50" height="10" fill="#8B4513" rx="5"></rect>
+            <!-- Eyes -->
+            <rect x="45" y="25" width="5" height="5" fill="#000"></rect>
+            <rect x="70" y="25" width="5" height="5" fill="#000"></rect>
+            <!-- Nose -->
+            <rect x="57" y="35" width="3" height="3" fill="#000"></rect>
+            <!-- Mouth -->
+            <rect x="50" y="40" width="20" height="3" fill="#000" rx="2"></rect>
+            <!-- Body -->
+            <rect x="45" y="50" width="30" height="35" fill="${colors[ageGroup]}" rx="5"></rect>
+            <!-- Left Arm -->
+            <rect x="30" y="55" width="15" height="20" fill="${colors[ageGroup]}" rx="7"></rect>
+            <!-- Right Arm -->
+            <rect x="75" y="55" width="15" height="20" fill="${colors[ageGroup]}" rx="7"></rect>
+            <!-- Left Leg -->
+            <rect x="50" y="85" width="8" height="25" fill="${colors[ageGroup]}" rx="4"></rect>
+            <!-- Right Leg -->
+            <rect x="62" y="85" width="8" height="25" fill="${colors[ageGroup]}" rx="4"></rect>
         `;
         
         console.log(`🎬 Initialized ${ageGroup} racer SVG`);
@@ -2926,25 +3309,53 @@ class ScrollytellingEngine {
     
     // Load race subject data
     loadRaceSubjectData() {
-        this.raceSubjects = this.gaitData;
+        this.raceSubjects = this.gaitData.filter(subject => {
+            // Ensure we have valid data
+            return subject && subject.id && subject.speed && subject.group;
+        });
         console.log('📊 Loaded race subject data:', this.raceSubjects.length, 'subjects');
+        console.log('📊 Sample subjects:', this.raceSubjects.slice(0, 3));
+        console.log('📊 Available groups:', [...new Set(this.raceSubjects.map(s => s.group))]);
     }
     
     // Populate race dropdowns
     populateRaceDropdowns() {
-        if (!this.raceSubjects) return;
+        if (!this.raceSubjects || this.raceSubjects.length === 0) {
+            console.error('❌ No race subjects available for dropdown population');
+            return;
+        }
         
         ['young', 'middle', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
-            if (select) {
+            if (!select) {
+                console.error(`❌ Dropdown not found: ${ageGroup}Select`);
+                return;
+            }
+            
+            // Filter subjects by group
+            const groupSubjects = this.raceSubjects.filter(s => s.group === ageGroup);
+            console.log(`📊 ${ageGroup} group subjects:`, groupSubjects.length);
+            
                 select.innerHTML = '<option value="">Choose subject...</option>';
-                this.raceSubjects.filter(s => s.group === ageGroup).forEach(subject => {
+            
+            if (groupSubjects.length === 0) {
+                const noDataOption = document.createElement('option');
+                noDataOption.value = '';
+                noDataOption.textContent = `No ${ageGroup} subjects available`;
+                noDataOption.disabled = true;
+                select.appendChild(noDataOption);
+                console.warn(`⚠️ No subjects found for ${ageGroup} group`);
+                return;
+            }
+            
+            groupSubjects.forEach(subject => {
                     const option = document.createElement('option');
                     option.value = subject.id;
-                    option.textContent = `Subject ${subject.id} (${subject.speed.toFixed(2)} m/s)`;
+                option.textContent = `Subject ${subject.id} (${subject.speed.toFixed(2)} m/s, ${subject.age} mo)`;
                     select.appendChild(option);
                 });
-            }
+            
+            console.log(`✅ Populated ${ageGroup} dropdown with ${groupSubjects.length} subjects`);
         });
     }
     
@@ -2953,29 +3364,44 @@ class ScrollytellingEngine {
         ['young', 'middle', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             if (select && select.options.length > 1) {
+                // Select the first non-empty option (index 1)
                 select.selectedIndex = 1;
-                this.onRaceSubjectChange(ageGroup, parseInt(select.value));
+                const selectedValue = parseInt(select.value);
+                console.log(`🎯 Auto-selected ${ageGroup} subject: ${selectedValue}`);
+                this.onRaceSubjectChange(ageGroup, selectedValue);
+            } else {
+                console.warn(`⚠️ Could not auto-select ${ageGroup} subject - insufficient options`);
             }
         });
     }
     
     // Handle race subject change
     onRaceSubjectChange(ageGroup, subjectId) {
-        const subject = this.raceSubjects.find(s => s.id === subjectId);
-        if (!subject) return;
+        const subject = this.raceSubjects?.find(s => s.id === subjectId);
+        if (!subject) {
+            console.error(`❌ Subject not found: ID ${subjectId} in ${ageGroup} group`);
+            return;
+        }
+        
+        console.log(`📊 Selected ${ageGroup} subject:`, subject);
         
         // Update info display
         const infoEl = document.getElementById(`${ageGroup}Info`);
         if (infoEl) {
             const spans = infoEl.getElementsByClassName('stat-value');
             if (spans.length >= 3) {
-                spans[0].textContent = `${subject.age} mo`;
-                spans[1].textContent = `${subject.speed.toFixed(2)} m/s`;
-                spans[2].textContent = `${subject.height.toFixed(1)}"`;
+                spans[0].textContent = `${subject.age}`;
+                spans[1].textContent = `${subject.speed.toFixed(2)}`;
+                spans[2].textContent = `${subject.height ? subject.height.toFixed(1) : subject.legLength ? subject.legLength.toFixed(1) : 'N/A'}`;
+                console.log(`✅ Updated ${ageGroup} info display`);
+            } else {
+                console.warn(`⚠️ Could not find stat-value spans for ${ageGroup}Info`);
             }
+        } else {
+            console.warn(`⚠️ Info element not found: ${ageGroup}Info`);
         }
         
-        console.log(`📊 Selected ${ageGroup} racer:`, subject.id, subject.speed.toFixed(2), 'm/s');
+        console.log(`✅ ${ageGroup} racer selected: ID ${subject.id}, Speed ${subject.speed.toFixed(2)} m/s`);
     }
     
     // Start race
@@ -2988,34 +3414,115 @@ class ScrollytellingEngine {
             raceButton.disabled = true;
         }
         
-        // Get selected subjects and start race
-        const subjects = {};
+        // First, reset all walkers to starting position
         ['young', 'middle', 'old'].forEach(ageGroup => {
-            const select = document.getElementById(`${ageGroup}Select`);
-            if (select && select.value) {
-                subjects[ageGroup] = this.raceSubjects.find(s => s.id === parseInt(select.value));
+            const svg = document.querySelector(`.kid-svg.${ageGroup}`);
+            if (svg) {
+                svg.style.transition = 'none';
+                svg.style.left = '0%';
+                svg.classList.remove('racing');
+                // Force reflow to ensure the reset is applied
+                svg.offsetHeight;
             }
         });
         
+        // Get selected subjects and validate data
+        const subjects = {};
+        let validSubjectsCount = 0;
+        
+        ['young', 'middle', 'old'].forEach(ageGroup => {
+            const select = document.getElementById(`${ageGroup}Select`);
+            console.log(`📊 ${ageGroup} select element:`, select);
+            console.log(`📊 ${ageGroup} selected value:`, select?.value);
+            
+            if (select && select.value) {
+                const subjectId = parseInt(select.value);
+                const subject = this.raceSubjects?.find(s => s.id === subjectId);
+                console.log(`📊 Found ${ageGroup} subject:`, subject);
+                
+                if (subject && subject.speed) {
+                    subjects[ageGroup] = subject;
+                    validSubjectsCount++;
+                    console.log(`✅ ${ageGroup} subject loaded: ID ${subject.id}, Speed ${subject.speed.toFixed(2)} m/s`);
+                } else {
+                    console.warn(`⚠️ Invalid ${ageGroup} subject or missing speed data`);
+                }
+            } else {
+                console.warn(`⚠️ No ${ageGroup} subject selected`);
+            }
+        });
+        
+        console.log(`📊 Total valid subjects: ${validSubjectsCount}`);
+        console.log(`📊 Subjects object:`, subjects);
+        
+        if (validSubjectsCount === 0) {
+            console.error('❌ No valid subjects found for race!');
+            if (raceButton) {
+                raceButton.textContent = 'Start Race';
+                raceButton.disabled = false;
+            }
+            return;
+        }
+        
+        // Start race animation after reset
+        setTimeout(() => {
         this.animateRace(subjects);
+        }, 100);
     }
     
     // Animate race
     animateRace(subjects) {
+        console.log('🎬 Starting race animation with subjects:', subjects);
+        
         const raceDuration = 4000;
         
+        // Get all speeds for max calculation
+        const speeds = Object.values(subjects).map(s => s ? s.speed : 0).filter(s => s > 0);
+        if (speeds.length === 0) {
+            console.error('❌ No valid speeds found for race animation!');
+            return;
+        }
+        
+        const maxSpeed = Math.max(...speeds);
+        console.log(`📊 Max speed: ${maxSpeed.toFixed(2)} m/s`);
+        console.log(`📊 All speeds: [${speeds.map(s => s.toFixed(2)).join(', ')}]`);
+        
         Object.entries(subjects).forEach(([ageGroup, subject]) => {
-            if (!subject) return;
+            if (!subject) {
+                console.warn(`⚠️ No subject for ${ageGroup} group`);
+                return;
+            }
             
             const svg = document.querySelector(`.kid-svg.${ageGroup}`);
-            if (svg) {
+            if (!svg) {
+                console.error(`❌ SVG not found for ${ageGroup} group`);
+                return;
+            }
+            
                 const speed = subject.speed;
-                const maxSpeed = Math.max(...Object.values(subjects).map(s => s ? s.speed : 0));
-                const position = (speed / maxSpeed) * 70; // 70% max position
-                
+            const speedRatio = speed / maxSpeed;
+            const position = speedRatio * 75; // 75% max position for better visibility
+            
+            console.log(`🏃 ${ageGroup.toUpperCase()} RACER:`);
+            console.log(`   Subject ID: ${subject.id}`);
+            console.log(`   Speed: ${speed.toFixed(2)} m/s`);
+            console.log(`   Speed Ratio: ${speedRatio.toFixed(3)}`);
+            console.log(`   Final Position: ${position.toFixed(1)}%`);
+            
+            // Enable smooth transition and add racing class for walking animation
                 svg.style.transition = `left ${raceDuration}ms ease-out`;
-                svg.style.left = `${position}%`;
                 svg.classList.add('racing');
+            
+            // Start the race movement with immediate position update
+            svg.style.left = `${position}%`;
+            
+            // Add visual feedback for speed
+            if (speedRatio > 0.9) {
+                svg.style.filter = 'drop-shadow(0 0 20px #feca57)'; // Gold glow for fastest
+            } else if (speedRatio > 0.7) {
+                svg.style.filter = 'drop-shadow(0 0 15px #4ecdc4)'; // Teal glow for fast
+            } else {
+                svg.style.filter = 'drop-shadow(0 2px 8px rgba(255, 255, 255, 0.4))'; // Default glow
             }
         });
         
@@ -3028,11 +3535,17 @@ class ScrollytellingEngine {
                     raceButton.disabled = false;
                 }
                 
-                // Remove racing class
+                // Remove racing class and reset positions
                 ['young', 'middle', 'old'].forEach(ageGroup => {
                     const svg = document.querySelector(`.kid-svg.${ageGroup}`);
                     if (svg) {
                         svg.classList.remove('racing');
+                        svg.style.filter = 'drop-shadow(0 2px 8px rgba(255, 255, 255, 0.4))'; // Reset filter
+                        // Reset to starting position smoothly
+                        setTimeout(() => {
+                            svg.style.transition = 'left 1000ms ease-in-out';
+                            svg.style.left = '0%';
+                        }, 500);
                     }
                 });
             }
@@ -3216,7 +3729,9 @@ class ScrollytellingEngine {
                 svg.style.left = '0%';
                 svg.style.transition = '';
                 svg.classList.remove('racing');
-                svg.innerHTML = ''; // Clear SVG content
+                
+                // Re-initialize the SVG to ensure proper state
+                this.initRacerSVG(ageGroup);
             }
             
             // Reset info displays
@@ -3594,38 +4109,555 @@ class ScrollytellingEngine {
     
     // Start default animation (when no subject is selected)
     startDefaultAnimation(walkerId) {
-        // Generate baseline variability parameters for this walker type
-        const baseStdDev = walkerId === 'younger' ? 60 : 35;
-        const variabilityRange = walkerId === 'younger' ? 30 : 15;
+        console.log(`🚶 Starting default animation for ${walkerId} walker`);
         
-        let stepCount = 0;
+        const elements = this.getStrideWalkerElements(walkerId);
+        if (!elements.svg) return;
         
-        const stepInterval = setInterval(() => {
-            if (this.currentSection !== 2) {
-                clearInterval(stepInterval);
+        // Initialize basic SVG if not already done
+        if (!elements.svg.innerHTML.trim()) {
+            this.initStrideWalkerSVG(walkerId);
+        }
+        
+        // Simple walking animation
+        const legGroups = elements.svg.querySelectorAll('.leg-group');
+        const armGroups = elements.svg.querySelectorAll('.arm-group');
+        
+        let animationFrame = 0;
+        const animate = () => {
+            animationFrame += 0.1;
+            
+            legGroups.forEach((leg, index) => {
+                const offset = index * Math.PI; // Legs move opposite to each other
+                const legAngle = Math.sin(animationFrame + offset) * 15;
+                leg.style.transform = `rotate(${legAngle}deg)`;
+            });
+            
+            armGroups.forEach((arm, index) => {
+                const offset = index * Math.PI; // Arms move opposite to legs
+                const armAngle = Math.sin(animationFrame + offset + Math.PI) * 10;
+                arm.style.transform = `rotate(${armAngle}deg)`;
+            });
+            
+            if (this.walkerStates[walkerId] && this.walkerStates[walkerId].isWalking) {
+                requestAnimationFrame(animate);
+            }
+        };
+        
+        animate();
+    }
+
+    // Real-time variability visualization state
+    variabilityState = {
+        isPlaying: false,
+        charts: {
+            younger: null,
+            older: null
+        },
+        datasets: {
+            younger: [],
+            older: []
+        },
+        timeIndex: 0,
+        maxDataPoints: 50,
+        updateInterval: null,
+        fixedAxes: {
+            y: { min: 0, max: 100 }, // Fixed Y-axis for standard deviation
+            x: { min: 0, max: 50 }   // Fixed X-axis for time steps
+        }
+    };
+
+    // Initialize real-time variability charts
+    initializeVariabilityCharts() {
+        // Only initialize if we're in section 2 (stride walker section) and canvas elements exist
+        const youngerCanvas = document.getElementById('strideVariabilityYounger');
+        const olderCanvas = document.getElementById('strideVariabilityOlder');
+        
+        if (!youngerCanvas && !olderCanvas) {
+            console.log('📊 Variability chart canvases not found, skipping initialization');
+            return;
+        }
+        
+        console.log('📊 Initializing variability charts');
+        
+        if (youngerCanvas) {
+            this.initializeVariabilityChart('younger');
+        }
+        
+        if (olderCanvas) {
+            this.initializeVariabilityChart('older');
+        }
+        
+        this.setupVariabilityControls();
+    }
+
+    initializeVariabilityChart(walkerId) {
+        const canvasId = walkerId === 'younger' ? 'strideVariabilityYounger' : 'strideVariabilityOlder';
+        const canvas = document.getElementById(canvasId);
+        
+        if (!canvas) {
+            console.warn(`Canvas ${canvasId} not found, skipping chart initialization`);
+            return;
+        }
+
+        // Ensure canvas is properly attached to DOM
+        if (!canvas.parentNode) {
+            console.warn(`Canvas ${canvasId} not attached to DOM, skipping chart initialization`);
+            return;
+        }
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.warn(`Cannot get 2D context for canvas ${canvasId}, skipping chart initialization`);
+            return;
+        }
+        
+        // Destroy existing chart if it exists - IMPROVED CLEANUP
+        if (this.variabilityState.charts[walkerId]) {
+            try {
+                this.variabilityState.charts[walkerId].destroy();
+            } catch (error) {
+                console.warn(`Error destroying existing ${walkerId} chart:`, error);
+            }
+            this.variabilityState.charts[walkerId] = null;
+        }
+        
+        // Also check for any Chart.js instances attached to this canvas and destroy them
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) {
+            try {
+                existingChart.destroy();
+            } catch (error) {
+                console.warn(`Error destroying existing Chart.js instance on ${canvasId}:`, error);
+            }
+        }
+
+        try {
+            this.variabilityState.charts[walkerId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: this.variabilityState.maxDataPoints}, (_, i) => i),
+                    datasets: [{
+                        label: 'Stride Std Dev (ms)',
+                        data: [],
+                        borderColor: walkerId === 'younger' ? '#4ecdc4' : '#ff6b6b',
+                        backgroundColor: walkerId === 'younger' ? 'rgba(76, 205, 196, 0.1)' : 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0, // Hide all points on the main line
+                        pointHoverRadius: 0, // Hide hover effects on the main line
+                        showLine: true // Ensure continuous line is shown
+                    }, {
+                        label: 'Latest Data Point',
+                        data: [],
+                        borderColor: '#ffffff',
+                        backgroundColor: '#ffffff',
+                        borderWidth: 0,
+                        fill: false,
+                        tension: 0,
+                        pointRadius: 4, // Smaller highlighted dot for latest point (reduced from 8)
+                        pointHoverRadius: 6, // Reduced from 10
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: walkerId === 'younger' ? '#4ecdc4' : '#ff6b6b',
+                        pointBorderWidth: 3,
+                        showLine: false // Only show the point, not a line
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 300,
+                        easing: 'easeInOutQuart'
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#000000',
+                                font: { size: 10, weight: 'bold' },
+                                filter: function(item, chart) {
+                                    // Show only Average Interval and Stride Intervals in legend
+                                    return item.datasetIndex === 2 || item.datasetIndex === 3;
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: walkerId === 'younger' ? '#4ecdc4' : '#ff6b6b',
+                            borderWidth: 1,
+                            cornerRadius: 6,
+                            displayColors: true,
+                            callbacks: {
+                                title: function(context) {
+                                    return `Step ${context[0].label}`;
+                                },
+                                label: function(context) {
+                                    return `Std Dev: ${context.parsed.y.toFixed(2)} ms`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            min: this.variabilityState.fixedAxes.x.min,
+                            max: this.variabilityState.fixedAxes.x.max,
+                            title: {
+                                display: true,
+                                text: 'Time Steps',
+                                color: '#ffffff',
+                                font: {
+                                    family: "'Courier New', monospace",
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    family: "'Courier New', monospace",
+                                    size: 10
+                                },
+                                stepSize: 10
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                                lineWidth: 1
+                            }
+                        },
+                        y: {
+                            min: this.variabilityState.fixedAxes.y.min,
+                            max: this.variabilityState.fixedAxes.y.max,
+                            title: {
+                                display: true,
+                                text: 'Standard Deviation (ms)',
+                                color: '#ffffff',
+                                font: {
+                                    family: "'Courier New', monospace",
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    family: "'Courier New', monospace",
+                                    size: 10
+                                },
+                                stepSize: 20
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                                lineWidth: 1
+                            }
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.warn(`Error initializing ${walkerId} variability chart:`, error);
+        }
+    }
+
+    setupVariabilityControls() {
+        const playBtn = document.getElementById('playVariabilityButton');
+        const pauseBtn = document.getElementById('pauseVariabilityButton');
+        const resetBtn = document.getElementById('resetVariabilityButton');
+
+        if (playBtn) {
+            playBtn.addEventListener('click', () => this.playVariabilityVisualization());
+        }
+        
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', () => this.pauseVariabilityVisualization());
+        }
+        
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.resetVariabilityVisualization());
+        }
+    }
+
+    playVariabilityVisualization() {
+        if (this.variabilityState.isPlaying) return;
+
+        this.variabilityState.isPlaying = true;
+        this.updateVariabilityButtonStates();
+
+        // Start the real-time data simulation
+        this.variabilityState.updateInterval = setInterval(() => {
+            this.updateVariabilityData();
+        }, 200); // Update every 200ms for smooth real-time effect
+    }
+
+    pauseVariabilityVisualization() {
+        this.variabilityState.isPlaying = false;
+        this.updateVariabilityButtonStates();
+
+        if (this.variabilityState.updateInterval) {
+            clearInterval(this.variabilityState.updateInterval);
+            this.variabilityState.updateInterval = null;
+        }
+    }
+
+    resetVariabilityVisualization() {
+        this.pauseVariabilityVisualization();
+        
+        // Reset data
+        this.variabilityState.datasets.younger = [];
+        this.variabilityState.datasets.older = [];
+        this.variabilityState.timeIndex = 0;
+
+        // Update charts - clear both datasets with error handling
+        if (this.variabilityState.charts.younger) {
+            try {
+                if (this.variabilityState.charts.younger.data && 
+                    this.variabilityState.charts.younger.data.datasets &&
+                    this.variabilityState.charts.younger.data.datasets.length >= 2) {
+                    this.variabilityState.charts.younger.data.datasets[0].data = []; // Clear continuous line
+                    this.variabilityState.charts.younger.data.datasets[1].data = []; // Clear highlighted point
+                    this.variabilityState.charts.younger.update('none');
+                }
+            } catch (error) {
+                console.warn('Error resetting younger variability chart:', error);
+                // Destroy and recreate the chart if reset fails
+                try {
+                    this.variabilityState.charts.younger.destroy();
+                } catch (destroyError) {
+                    console.warn('Error destroying younger chart during reset:', destroyError);
+                }
+                this.variabilityState.charts.younger = null;
+            }
+        }
+        
+        if (this.variabilityState.charts.older) {
+            try {
+                if (this.variabilityState.charts.older.data && 
+                    this.variabilityState.charts.older.data.datasets &&
+                    this.variabilityState.charts.older.data.datasets.length >= 2) {
+                    this.variabilityState.charts.older.data.datasets[0].data = []; // Clear continuous line
+                    this.variabilityState.charts.older.data.datasets[1].data = []; // Clear highlighted point
+                    this.variabilityState.charts.older.update('none');
+                }
+            } catch (error) {
+                console.warn('Error resetting older variability chart:', error);
+                // Destroy and recreate the chart if reset fails
+                try {
+                    this.variabilityState.charts.older.destroy();
+                } catch (destroyError) {
+                    console.warn('Error destroying older chart during reset:', destroyError);
+                }
+                this.variabilityState.charts.older = null;
+            }
+        }
+    }
+
+    updateVariabilityButtonStates() {
+        const playBtn = document.getElementById('playVariabilityButton');
+        const pauseBtn = document.getElementById('pauseVariabilityButton');
+
+        if (playBtn && pauseBtn) {
+            if (this.variabilityState.isPlaying) {
+                playBtn.style.display = 'none';
+                pauseBtn.style.display = 'inline-block';
+            } else {
+                playBtn.style.display = 'inline-block';
+                pauseBtn.style.display = 'none';
+            }
+        }
+    }
+
+    updateVariabilityData() {
+        // Check if we're still in the stride section (section 2)
+        if (this.currentSection !== 2) {
+            console.log('No longer in stride section, stopping variability visualization');
+            this.pauseVariabilityVisualization();
+            return;
+        }
+        
+        // Check if charts are properly initialized before generating data
+        if (!this.variabilityState.charts.younger && !this.variabilityState.charts.older) {
+            console.warn('No variability charts initialized, stopping visualization');
+            this.pauseVariabilityVisualization();
+            return;
+        }
+
+        try {
+            // Generate realistic stride interval variability data
+            const youngerStdDev = this.generateStrideStdDev('younger');
+            const olderStdDev = this.generateStrideStdDev('older');
+
+            // Add data points only if charts exist
+            if (this.variabilityState.charts.younger) {
+                this.addVariabilityDataPoint('younger', youngerStdDev);
+            }
+            
+            if (this.variabilityState.charts.older) {
+                this.addVariabilityDataPoint('older', olderStdDev);
+            }
+
+            this.variabilityState.timeIndex++;
+
+            // Stop if we've reached the maximum
+            if (this.variabilityState.timeIndex >= this.variabilityState.maxDataPoints) {
+                this.pauseVariabilityVisualization();
+            }
+        } catch (error) {
+            console.error('Error updating variability data:', error);
+            this.pauseVariabilityVisualization();
+        }
+    }
+
+    generateStrideStdDev(walkerId) {
+        // Load real participant data directly for variability calculation
+        const selectElement = document.getElementById(walkerId === 'younger' ? 'subjectSelectYounger' : 'subjectSelectOlder');
+        
+        if (!selectElement || !selectElement.value) {
+            console.error(`No participant selected for ${walkerId} walker`);
+            return 0;
+        }
+        
+        const subjectId = parseInt(selectElement.value);
+        const subject = this.strideSubjectData.find(s => s.id === subjectId);
+        
+        if (!subject) {
+            console.error(`Subject data not found for ID: ${subjectId}`);
+            return 0;
+        }
+        
+        // Calculate standard deviation based on actual subject characteristics
+        const baseStdDev = subject.age < 80 ? 25 : 35; // Younger subjects tend to have more consistent gait
+        const ageEffect = (subject.age - 40) * 0.2; // Age-related increase in variability
+        const speedEffect = (1.5 - subject.speed) * 10; // Slower speeds tend to have more variability
+        
+        // Add natural variation based on time to simulate real gait patterns
+        const timeEffect = Math.sin(this.variabilityState.timeIndex * 0.1) * 5;
+        
+        const calculatedStdDev = Math.max(5, baseStdDev + ageEffect + speedEffect + timeEffect);
+        
+        return calculatedStdDev;
+    }
+
+    addVariabilityDataPoint(walkerId, stdDevValue) {
+        // Check if we're still in the stride section (section 2)
+        if (this.currentSection !== 2) {
+            console.log(`Skipping variability update for ${walkerId} - not in stride section (current: ${this.currentSection})`);
+            return;
+        }
+        
+        const chart = this.variabilityState.charts[walkerId];
+        
+        // Enhanced null checks to prevent Chart.js errors
+        if (!chart || !chart.data || !chart.data.datasets || chart.data.datasets.length < 2) {
+            console.warn(`Chart not properly initialized for ${walkerId}, skipping data update`);
+            return;
+        }
+        
+        // Check if chart canvas still exists in DOM
+        const canvas = chart.canvas;
+        if (!canvas || !canvas.parentNode) {
+            console.warn(`Chart canvas for ${walkerId} no longer in DOM, skipping update`);
+            return;
+        }
+        
+        // Check if chart is destroyed
+        if (chart.destroyed) {
+            console.warn(`Chart for ${walkerId} is destroyed, skipping update`);
+            return;
+        }
+
+        const lineDataset = chart.data.datasets[0]; // Main continuous line
+        const highlightDataset = chart.data.datasets[1]; // Highlighted latest point
+        
+        // Verify datasets exist
+        if (!lineDataset || !highlightDataset) {
+            console.warn(`Chart datasets for ${walkerId} are missing, skipping update`);
+            return;
+        }
+        
+        // Initialize data arrays if they don't exist
+        if (!lineDataset.data) lineDataset.data = [];
+        if (!highlightDataset.data) highlightDataset.data = [];
+        
+        // Add new data point to the continuous line
+        lineDataset.data.push({
+            x: this.variabilityState.timeIndex,
+            y: stdDevValue
+        });
+
+        // Update the highlighted point to show only the latest data point
+        highlightDataset.data = [{
+            x: this.variabilityState.timeIndex,
+            y: stdDevValue
+        }];
+
+        // Remove old data points from the line if we exceed the maximum
+        if (lineDataset.data.length > this.variabilityState.maxDataPoints) {
+            lineDataset.data.shift();
+        }
+
+        // Safe chart update with error handling
+        try {
+            chart.update('none'); // Use 'none' instead of 'active' for better performance
+        } catch (error) {
+            console.error(`Error updating ${walkerId} variability chart:`, error);
+            // Stop the visualization if chart updates are failing
+            this.pauseVariabilityVisualization();
+            return;
+        }
+
+        // Update the stats display
+        this.updateVariabilityStats(walkerId, stdDevValue);
+    }
+
+    updateVariabilityStats(walkerId, currentStdDev) {
+        const currentId = walkerId === 'younger' ? 'currentIntervalYounger' : 'currentIntervalOlder';
+        const stdDevId = walkerId === 'younger' ? 'stdDevYounger' : 'stdDevOlder';
+        
+        const currentElement = document.getElementById(currentId);
+        const stdDevElement = document.getElementById(stdDevId);
+        
+        if (currentElement) {
+            // Get real participant data for current interval calculation
+            const selectElement = document.getElementById(walkerId === 'younger' ? 'subjectSelectYounger' : 'subjectSelectOlder');
+            
+            if (!selectElement || !selectElement.value) {
+                console.error(`No participant selected for ${walkerId} walker stats`);
+                currentElement.textContent = '-';
                 return;
             }
             
-            stepCount++;
-            this[`${walkerId}StrideCount`] = stepCount;
+            const subjectId = parseInt(selectElement.value);
+            const subject = this.strideSubjectData.find(s => s.id === subjectId);
             
-            // Generate default stride variability data
-            const progress = (stepCount % 10) / 10;
-            const trendComponent = baseStdDev + (variabilityRange * Math.sin(progress * Math.PI * 2));
-            const randomComponent = (Math.random() - 0.5) * 20;
-            const currentStdDev = Math.max(10, trendComponent + randomComponent);
+            if (!subject) {
+                console.error(`Subject data not found for ID: ${subjectId} in stats`);
+                currentElement.textContent = '-';
+                return;
+            }
             
-            // Add point to real-time plot
-            this.addRealTimeVariabilityPoint(walkerId, currentStdDev);
+            // Calculate realistic current interval based on subject characteristics
+            const baseInterval = 400 + (subject.age * 3); // Age affects stride time
+            const speedAdjustment = (1.5 - subject.speed) * 100; // Speed affects stride time
             
-            // Update stats
-            this.updateStrideStats(walkerId, stepCount, currentStdDev);
+            // Use deterministic variation based on time index instead of random
+            const timeBasedVariation = Math.sin(this.variabilityState.timeIndex * 0.2) * currentStdDev;
             
-        }, 1500);
+            const currentInterval = Math.max(200, baseInterval + speedAdjustment + timeBasedVariation);
+            currentElement.textContent = `${currentInterval.toFixed(0)}`;
+        }
         
-        // Store interval for cleanup
-        this.addSectionInterval('section2', stepInterval);
-        this[`${walkerId}VariabilityInterval`] = stepInterval;
+        if (stdDevElement) {
+            stdDevElement.textContent = `${currentStdDev.toFixed(1)}`;
+        }
     }
     
     // Bind keyboard and other events

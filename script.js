@@ -1255,7 +1255,7 @@ class ScrollytellingEngine {
     // Reset comparison animation
     resetComparisonAnimation() {
         // Reset race kids
-        const raceKids = ['raceKidYoung', 'raceKidMiddle', 'raceKidOld'];
+        const raceKids = ['raceKidYoung', 'raceKidOld'];
         raceKids.forEach(kidId => {
             const kid = document.getElementById(kidId);
             if (kid) {
@@ -3223,7 +3223,7 @@ class ScrollytellingEngine {
             this.loadRaceSubjectData();
         
         // Initialize race SVGs
-        ['young', 'middle', 'old'].forEach(ageGroup => {
+        ['young', 'old'].forEach(ageGroup => {
             this.initRacerSVG(ageGroup);
         });
         
@@ -3250,7 +3250,6 @@ class ScrollytellingEngine {
         
         const colors = {
             young: '#4ECDC4',
-            middle: '#45B7D1', 
             old: '#FF6B6B'
         };
         
@@ -3297,7 +3296,7 @@ class ScrollytellingEngine {
         }
         
         // Set up subject selection dropdowns for race
-        ['young', 'middle', 'old'].forEach(ageGroup => {
+        ['young', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             if (select) {
                 select.addEventListener('change', (e) => {
@@ -3325,7 +3324,7 @@ class ScrollytellingEngine {
             return;
         }
         
-        ['young', 'middle', 'old'].forEach(ageGroup => {
+        ['young', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             if (!select) {
                 console.error(`❌ Dropdown not found: ${ageGroup}Select`);
@@ -3361,7 +3360,7 @@ class ScrollytellingEngine {
     
     // Auto-select default race subjects
     autoSelectDefaultRaceSubjects() {
-        ['young', 'middle', 'old'].forEach(ageGroup => {
+        ['young', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             if (select && select.options.length > 1) {
                 // Select the first non-empty option (index 1)
@@ -3415,7 +3414,7 @@ class ScrollytellingEngine {
         }
         
         // First, reset all walkers to starting position
-        ['young', 'middle', 'old'].forEach(ageGroup => {
+        ['young', 'old'].forEach(ageGroup => {
             const svg = document.querySelector(`.kid-svg.${ageGroup}`);
             if (svg) {
                 svg.style.transition = 'none';
@@ -3430,7 +3429,7 @@ class ScrollytellingEngine {
         const subjects = {};
         let validSubjectsCount = 0;
         
-        ['young', 'middle', 'old'].forEach(ageGroup => {
+        ['young', 'old'].forEach(ageGroup => {
             const select = document.getElementById(`${ageGroup}Select`);
             console.log(`📊 ${ageGroup} select element:`, select);
             console.log(`📊 ${ageGroup} selected value:`, select?.value);
@@ -3536,7 +3535,7 @@ class ScrollytellingEngine {
                 }
                 
                 // Remove racing class and reset positions
-                ['young', 'middle', 'old'].forEach(ageGroup => {
+                ['young', 'old'].forEach(ageGroup => {
                     const svg = document.querySelector(`.kid-svg.${ageGroup}`);
                     if (svg) {
                         svg.classList.remove('racing');
